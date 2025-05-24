@@ -36,6 +36,7 @@ public struct MidiNode : IAudioKernel<MidiNode.Parameters, MidiNode.Providers>
         _Retrigger = new NativeArray<PulseGenerator>(16, Allocator.AudioKernel, NativeArrayOptions.ClearMemory);
         _Pedal = false;
         _RotateChannelIndex = -1;
+        Debug.Log("Midi alloc");
     }
 
     public void Execute(ref ExecuteContext<Parameters, Providers> context)

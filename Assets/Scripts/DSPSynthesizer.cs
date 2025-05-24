@@ -1,12 +1,21 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿
 using UnityEngine;
 using Unity.Audio;
+using System.Collections.Generic;
+using System.Reflection;
+using System;
+using TMPro;
 
 public class DSPSynthesizer : MonoBehaviour
 {
     public GameObject ScopeRendererPrefab;
     public GameObject SpectrumRendererPrefab;
+    public GameObject KnobPrefab;
+    public GameObject PanePrefab;
+    public GameObject KnobLabelPrefab;
+
+    private float current_highest_module = 0.0f;
+    private int global_parameter_count = 0;
 
     DSPGraph _Graph;
     MyAudioDriver _Driver;
@@ -40,6 +49,53 @@ public class DSPSynthesizer : MonoBehaviour
     ScopeRenderer _ScopeRenderer;
     SpectrumRenderer _SpectrumRenderer;
 
+    private List<(DSPNode,NodeType, string)> paramter_cb = new List<(DSPNode,NodeType, string)>();
+
+    enum NodeType
+    {
+        Oscillator,
+        ADSR,
+        VCA, 
+        Mixer,
+        Attenuator,
+        M2S,
+        Scope,
+        Spectrum,
+        Midi
+    }
+
+
+
+    public void On_Param_Change(float val, int id)
+    {
+        using (var block = _Graph.CreateCommandBlock())
+        {
+
+
+            DSPNode obj = paramter_cb[id].Item1;
+            //var block = _Graph.CreateCommandBlock();
+
+            switch (paramter_cb[id].Item2)
+            {
+                case NodeType.Oscillator:
+                    Enum.TryParse(paramter_cb[id].Item3, out OscilatorNode.Parameters param1);
+                    //Debug.Log(val);
+                    block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(obj, param1, val);
+                    break;
+                case NodeType.ADSR:
+                    Enum.TryParse(paramter_cb[id].Item3, out ADSRNode.Parameters param2);
+                    //Debug.Log("ADSR" + val);
+                    block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(obj, param2, val);
+                    break;
+                case NodeType.VCA:
+                    Enum.TryParse(paramter_cb[id].Item3, out VCANode.Parameters param3);
+                    Debug.Log("set to" + val);
+                    block.SetFloat<VCANode.Parameters, VCANode.Providers, VCANode>(obj, param3, val);
+
+                    break;
+            }
+        }
+    }
     void Start()
     {
         ConfigureDSP();
@@ -47,7 +103,7 @@ public class DSPSynthesizer : MonoBehaviour
 
     private void Update()
     {
-        _Graph.Update();
+
     }
 
     void ConfigureDSP()
@@ -145,6 +201,8 @@ public class DSPSynthesizer : MonoBehaviour
             //
             // parameters
             //
+            
+            
             block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(_Oscilator1, OscilatorNode.Parameters.Frequency, 130.813f);
             block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(_Oscilator1, OscilatorNode.Parameters.Mode, (float)OscilatorNode.Mode.Sine);
 
@@ -190,11 +248,11 @@ public class DSPSynthesizer : MonoBehaviour
             block.SetFloat<SpectrumNode.Parameters, SpectrumNode.Providers, SpectrumNode>(_Spectrum, SpectrumNode.Parameters.Window, (float)SpectrumNode.WindowType.BlackmanHarris);
         }
 
-        _ScopeRenderer = SpawnScopeRenderer(_Scope);
-        _ScopeRenderer.Height = 5.01f;
-        _ScopeRenderer.Offset = 0f;
+        //_ScopeRenderer = SpawnScopeRenderer(_Scope);
+        //_ScopeRenderer.Height = 5.01f;
+        //_ScopeRenderer.Offset = 0f;
 
-        _SpectrumRenderer = SpawnSpectrumRenderer(_Spectrum);
+        //_SpectrumRenderer = SpawnSpectrumRenderer(_Spectrum);
     }
 
     ScopeRenderer SpawnScopeRenderer(DSPNode scopeNode)
@@ -213,72 +271,176 @@ public class DSPSynthesizer : MonoBehaviour
         return spectrum;
     }
 
-    static DSPNode CreateOscilator(DSPCommandBlock block)
+    public static ParameterRangeAttribute GetRange<TParameters>(TParameters parameter) where TParameters : unmanaged, Enum
+    {
+        // Hole das FieldInfo-Objekt für das Enum-Feld
+        FieldInfo fieldInfo = typeof(OscilatorNode.Parameters).GetField(parameter.ToString());
+
+        if (fieldInfo != null)
+        {
+            // Versuche, das Attribut vom Typ ParameterRangeAttribute zu bekommen
+            var attribute = (ParameterRangeAttribute)Attribute.GetCustomAttribute(fieldInfo, typeof(ParameterRangeAttribute));
+            return attribute;
+        }
+
+        return null;
+    }
+
+
+    private void CreateUIPanel<TParameters>(DSPNode Node, NodeType type) where TParameters : unmanaged, Enum
+    {
+        float[] offsets = { 0.5f, 1.5f, 2.5f, 3.5f };
+
+        var names = Enum.GetNames(typeof(TParameters));
+        var num_params = names.Length;
+
+        var pane_width = 3;
+
+        var pane_height = (int)Math.Ceiling((float)num_params / pane_width);
+
+        if (num_params == 0)
+        {
+            pane_height = 1;
+        }
+
+        //if(current_highest_module == 0)
+        //{
+        //    current_highest_module += pane_height;
+        //}
+
+        var pane_bottom = current_highest_module;
+
+        GameObject pane = Instantiate(PanePrefab, new Vector3(0, pane_bottom + (float)pane_height / 2.0f, 0), Quaternion.Euler(new Vector3(0, 0, 0)));
+
+        var old_scale = pane.transform.localScale;
+        old_scale.x *= pane_width;
+        old_scale.y *= pane_height;
+
+        Debug.Log("w:" + old_scale.x);
+        Debug.Log("h:" + old_scale.y);
+
+        current_highest_module += pane_height;
+
+        pane.transform.localScale = old_scale;
+
+        if(num_params == 0)
+        {
+            return;
+        }
+
+        var count = 0;
+
+        for (int row = 0; row < pane_height; row++)
+        {
+            for (int col = 0; col < pane_width; col++)
+            {
+                GameObject knob = Instantiate(KnobPrefab, new Vector3(offsets[col] - (float)pane_width / 2.0f, row + pane_bottom + 0.5f, 0f), Quaternion.Euler(new Vector3(180, 0, 0)));
+                knob.GetComponent<ParameterId>().Id = global_parameter_count;
+                knob.GetComponent<DialCB>().cb = On_Param_Change;
+                paramter_cb.Add((Node, type, names[count]));
+                global_parameter_count++;
+
+                // TODO make this maybe turn with the camera
+                var label = Instantiate(KnobLabelPrefab, new Vector3(offsets[col] - (float)pane_width / 2.0f, row + pane_bottom + 0.9f, -0.11f), Quaternion.Euler(new Vector3(0, 0, 0)));
+                var c_text = label.GetComponent<TMP_Text>();
+                c_text.horizontalAlignment = HorizontalAlignmentOptions.Center;
+                c_text.text = names[count] + (global_parameter_count-1).ToString();
+                c_text.color = Color.black;
+                Debug.Log(c_text.text);
+
+                count++;
+                if (count == num_params)
+                {
+                    break;
+                }
+            }
+        }
+    }
+
+    private DSPNode CreateOscilator(DSPCommandBlock block)
     {
         var oscilator = block.CreateDSPNode<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>();
         block.AddInletPort(oscilator, 16); // fm
         block.AddInletPort(oscilator, 16); // pitch
         block.AddInletPort(oscilator, 16); // phase reset
         block.AddOutletPort(oscilator, 16);
+
+        CreateUIPanel<OscilatorNode.Parameters>(oscilator, NodeType.Oscillator);
         return oscilator;
     }
 
-    static DSPNode CreateADSR(DSPCommandBlock block)
+    private DSPNode CreateADSR(DSPCommandBlock block)
     {
         var adsr = block.CreateDSPNode<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>();
         block.AddInletPort(adsr, 16); // gate
         block.AddOutletPort(adsr, 16);
+        CreateUIPanel<ADSRNode.Parameters>(adsr, NodeType.ADSR);
+
         return adsr;
     }
 
-    static DSPNode CreateVCA(DSPCommandBlock block)
+    private DSPNode CreateVCA(DSPCommandBlock block)
     {
         var vca = block.CreateDSPNode<VCANode.Parameters, VCANode.Providers, VCANode>();
         block.AddInletPort(vca, 16); // voltage
         block.AddInletPort(vca, 16); // input
         block.AddOutletPort(vca, 16);
+        CreateUIPanel<VCANode.Parameters>(vca, NodeType.VCA);
+
         return vca;
     }
 
-    static DSPNode CreateMixer(DSPCommandBlock block)
+    private DSPNode CreateMixer(DSPCommandBlock block)
     {
         var mixer = block.CreateDSPNode<MixerNode.Parameters, MixerNode.Providers, MixerNode>();
         block.AddInletPort(mixer, 16); // input
         block.AddInletPort(mixer, 16); // cv
         block.AddOutletPort(mixer, 1);
+        CreateUIPanel<MixerNode.Parameters>(mixer, NodeType.Mixer);
+
         return mixer;
     }
 
-    static DSPNode CreateMidi(DSPCommandBlock block)
+    private DSPNode CreateMidi(DSPCommandBlock block)
     {
         var midi = block.CreateDSPNode<MidiNode.Parameters, MidiNode.Providers, MidiNode>();
         block.AddOutletPort(midi, 16); // gate
         block.AddOutletPort(midi, 16); // note
         block.AddOutletPort(midi, 16); // retrigger
+        CreateUIPanel<MidiNode.Parameters>(midi, NodeType.Midi);
+
         return midi;
     }
 
-    static DSPNode CreateAttenuator(DSPCommandBlock block)
+    private DSPNode CreateAttenuator(DSPCommandBlock block)
     {
         var attenuator = block.CreateDSPNode<AttenuatorNode.Parameters, AttenuatorNode.Providers, AttenuatorNode>();
         block.AddInletPort(attenuator, 1);
         block.AddOutletPort(attenuator, 1);
+        CreateUIPanel<AttenuatorNode.Parameters>(attenuator, NodeType.Attenuator);
+
+
         return attenuator;
     }
 
-    static DSPNode CreateMonoToStereo(DSPCommandBlock block)
+    private DSPNode CreateMonoToStereo(DSPCommandBlock block)
     {
         var mts = block.CreateDSPNode<MonoToStereoNode.Parameters, MonoToStereoNode.Providers, MonoToStereoNode>();
         block.AddInletPort(mts, 1); // left
         block.AddInletPort(mts, 1); // right
         block.AddOutletPort(mts, 2);
+        CreateUIPanel<MonoToStereoNode.Parameters>(mts, NodeType.M2S);
+
+
         return mts;
     }
 
-    static DSPNode CreateMonoScope(DSPCommandBlock block)
+    private DSPNode CreateMonoScope(DSPCommandBlock block)
     {
         var scope = block.CreateDSPNode<ScopeNode.Parameters, ScopeNode.Providers, ScopeNode>();
         block.AddInletPort(scope, 1);
+        CreateUIPanel<ScopeNode.Parameters>(scope, NodeType.Scope);
+
         return scope;
     }
 
@@ -288,4 +450,5 @@ public class DSPSynthesizer : MonoBehaviour
         block.AddInletPort(scope, 1);
         return scope;
     }
+
 }

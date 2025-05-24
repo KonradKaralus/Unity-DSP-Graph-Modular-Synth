@@ -59,6 +59,7 @@ public struct VCANode : IAudioKernel<VCANode.Parameters, VCANode.Providers>
             for (int s = 0; s < samplesCount; ++s)
             {
                 float multiplier = context.Parameters.GetFloat(Parameters.Multiplier, s);
+
                 outputBuffer[s] = voltageBuffer[s] * inputBuffer[s] * multiplier;
             }
         }

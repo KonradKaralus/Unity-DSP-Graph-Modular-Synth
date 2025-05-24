@@ -22,8 +22,8 @@ namespace Unity.Audio
     [AttributeUsage(AttributeTargets.Field)]
     public class ParameterRangeAttribute : Attribute
     {
-        internal readonly float Min;
-        internal readonly float Max;
+        public readonly float Min;
+        public readonly float Max;
 
         /// <summary></summary>
         /// <param name="min">The minimum value</param>

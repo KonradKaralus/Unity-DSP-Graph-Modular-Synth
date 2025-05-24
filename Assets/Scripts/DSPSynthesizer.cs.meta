@@ -3,7 +3,11 @@ guid: a55f173b1aa556c4eb29fc88c8592e57
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2
-  defaultReferences: []
+  defaultReferences:
+  - ScopeRendererPrefab: {instanceID: 0}
+  - SpectrumRendererPrefab: {instanceID: 0}
+  - KnobPrefab: {fileID: 919132149155446097, guid: cf730573633f57d4fb942031b0e21c4b,
+      type: 3}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 
