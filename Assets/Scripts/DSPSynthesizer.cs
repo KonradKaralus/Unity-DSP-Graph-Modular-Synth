@@ -51,7 +51,7 @@ public class DSPSynthesizer : MonoBehaviour
 
     private List<(DSPNode,NodeType, string)> paramter_cb = new List<(DSPNode,NodeType, string)>();
 
-    enum NodeType
+    public enum NodeType
     {
         Oscillator,
         ADSR,
@@ -68,33 +68,77 @@ public class DSPSynthesizer : MonoBehaviour
 
     public void On_Param_Change(float val, int id)
     {
-        using (var block = _Graph.CreateCommandBlock())
+        // val cannot be 45 < val < 135 to account for the deadzone at the bottom
+
+        if(val > 45f && val < 135f)
         {
+            Debug.LogWarning("Encountered out of bounds knob val");
+            return;
+        }
+
+        if( val >= 135f)
+        {
+            val = val - 135f;
+        } else
+        {
+            val = val + 225f;
+        }
+
+        val = val / 270f;
+
+        // val is now [0,1]
+
+        if (val < 0f || val > 1f)
+        {
+            Debug.LogWarning("Encountered out of bounds knob val after calc:" + val);
+            return;
+        }
 
 
-            DSPNode obj = paramter_cb[id].Item1;
+        using (var block = _Graph.CreateCommandBlock())
+            {
+                Debug.Log("set to" + val);
+
+
+                DSPNode obj = paramter_cb[id].Item1;
+                var type = paramter_cb[id].Item2;
             //var block = _Graph.CreateCommandBlock();
 
-            switch (paramter_cb[id].Item2)
-            {
-                case NodeType.Oscillator:
-                    Enum.TryParse(paramter_cb[id].Item3, out OscilatorNode.Parameters param1);
-                    //Debug.Log(val);
-                    block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(obj, param1, val);
-                    break;
-                case NodeType.ADSR:
-                    Enum.TryParse(paramter_cb[id].Item3, out ADSRNode.Parameters param2);
-                    //Debug.Log("ADSR" + val);
-                    block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(obj, param2, val);
-                    break;
-                case NodeType.VCA:
-                    Enum.TryParse(paramter_cb[id].Item3, out VCANode.Parameters param3);
-                    Debug.Log("set to" + val);
-                    block.SetFloat<VCANode.Parameters, VCANode.Providers, VCANode>(obj, param3, val);
+                ParameterRangeAttribute range = null;
+                float new_val = 0f;
 
-                    break;
+                switch (type)
+                {
+                    case NodeType.Oscillator:
+                        Enum.TryParse(paramter_cb[id].Item3, out OscilatorNode.Parameters param1);
+
+                        range = GetRange(param1, type);
+                        new_val = (range.Max - range.Min) * val + range.Min;
+
+                        block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(obj, param1, new_val);
+                        break;
+
+                    case NodeType.ADSR:
+                        Enum.TryParse(paramter_cb[id].Item3, out ADSRNode.Parameters param2);
+                    //Debug.Log("ADSR" + val);
+
+                        range = GetRange(param2, type);
+                        new_val = (range.Max - range.Min) * val + range.Min;
+
+                    block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(obj, param2, new_val);
+                        break;
+
+                    case NodeType.VCA:
+
+
+                        Enum.TryParse(paramter_cb[id].Item3, out VCANode.Parameters param3);
+                        range = GetRange(param3, type);
+                        new_val = (range.Max - range.Min) * val + range.Min;
+                    block.SetFloat<VCANode.Parameters, VCANode.Providers, VCANode>(obj, param3, new_val);
+
+                        break;
+                }
             }
-        }
     }
     void Start()
     {
@@ -118,7 +162,32 @@ public class DSPSynthesizer : MonoBehaviour
         _Driver = new MyAudioDriver { Graph = _Graph };
         _OutputHandle = _Driver.AttachToDefaultOutput();
 
-        CreateSynth0();
+        CreateSynth_Cust();
+        //CreateSynth0();
+    }
+
+    void CreateSynth_Cust()
+    {
+        using (var block = _Graph.CreateCommandBlock())
+        {
+            var osc1 = CreateOscilator(block);
+            var adsr = CreateADSR(block);
+            var vca = CreateVCA(block);
+            var mixer = CreateMixer(block);
+            var midi = CreateMidi(block);
+            var m2s = CreateMonoToStereo(block);
+
+            block.Connect(midi,0, adsr,0);
+            block.Connect(midi,1, osc1,1);
+            block.Connect(midi, 2, osc1, 2);
+            block.Connect(adsr, 0, vca, 0);
+            block.Connect(osc1, 0, vca, 1);
+            block.Connect(vca, 0, mixer, 0);
+            block.Connect(vca, 0, mixer, 1);
+            block.Connect(mixer, 0, m2s, 0);
+            block.Connect(mixer, 0, m2s, 1);
+            block.Connect(m2s, 0, _Graph.RootDSP, 0);
+        }
     }
 
     void CreateSynth0()
@@ -201,8 +270,8 @@ public class DSPSynthesizer : MonoBehaviour
             //
             // parameters
             //
-            
-            
+
+
             block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(_Oscilator1, OscilatorNode.Parameters.Frequency, 130.813f);
             block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(_Oscilator1, OscilatorNode.Parameters.Mode, (float)OscilatorNode.Mode.Sine);
 
@@ -271,15 +340,89 @@ public class DSPSynthesizer : MonoBehaviour
         return spectrum;
     }
 
-    public static ParameterRangeAttribute GetRange<TParameters>(TParameters parameter) where TParameters : unmanaged, Enum
+    public static ParameterRangeAttribute GetRange<TParameters>(TParameters parameter, NodeType type) where TParameters : unmanaged, Enum
     {
-        // Hole das FieldInfo-Objekt für das Enum-Feld
-        FieldInfo fieldInfo = typeof(OscilatorNode.Parameters).GetField(parameter.ToString());
+        FieldInfo fieldInfo = null;
+
+        switch (type)
+        {
+            case NodeType.Oscillator:
+                fieldInfo = typeof(OscilatorNode.Parameters).GetField(parameter.ToString());
+                break;
+
+            case NodeType.ADSR:
+                fieldInfo = typeof(ADSRNode.Parameters).GetField(parameter.ToString());
+                break;
+            case NodeType.Attenuator:
+                fieldInfo = typeof(AttenuatorNode.Parameters).GetField(parameter.ToString());
+                break;
+            case NodeType.Midi:
+                fieldInfo = typeof(MidiNode.Parameters).GetField(parameter.ToString());
+                break;
+            case NodeType.M2S:
+                fieldInfo = typeof(MonoToStereoNode.Parameters).GetField(parameter.ToString());
+                break;
+
+            case NodeType.Mixer:
+                fieldInfo = typeof(MixerNode.Parameters).GetField(parameter.ToString());
+                break;
+
+            case NodeType.VCA:
+                fieldInfo = typeof(VCANode.Parameters).GetField(parameter.ToString());
+                break;
+        }
+
+
+
 
         if (fieldInfo != null)
         {
             // Versuche, das Attribut vom Typ ParameterRangeAttribute zu bekommen
             var attribute = (ParameterRangeAttribute)Attribute.GetCustomAttribute(fieldInfo, typeof(ParameterRangeAttribute));
+            return attribute;
+        }
+
+        return null;
+    }
+
+    public static ParameterDefaultAttribute GetDefault<TParameters>(TParameters parameter, NodeType type) where TParameters : unmanaged, Enum
+    {
+        // Hole das FieldInfo-Objekt für das Enum-Feld
+
+        FieldInfo fieldInfo = null;
+
+        switch (type)
+        {
+            case NodeType.Oscillator:
+                fieldInfo = typeof(OscilatorNode.Parameters).GetField(parameter.ToString());
+                break;
+
+            case NodeType.ADSR:
+                fieldInfo = typeof(ADSRNode.Parameters).GetField(parameter.ToString());
+                break;
+            case NodeType.Attenuator:
+                fieldInfo = typeof(AttenuatorNode.Parameters).GetField(parameter.ToString());
+                break;
+            case NodeType.Midi:
+                fieldInfo = typeof(MidiNode.Parameters).GetField(parameter.ToString());
+                break;
+            case NodeType.M2S:
+                fieldInfo = typeof(MonoToStereoNode.Parameters).GetField(parameter.ToString());
+                break;
+
+            case NodeType.Mixer:
+                fieldInfo = typeof(MixerNode.Parameters).GetField(parameter.ToString());
+                break;
+
+            case NodeType.VCA:
+                fieldInfo = typeof(VCANode.Parameters).GetField(parameter.ToString());
+                break;
+        }
+
+        if (fieldInfo != null)
+        {
+            // Versuche, das Attribut vom Typ ParameterRangeAttribute zu bekommen
+            var attribute = (ParameterDefaultAttribute)Attribute.GetCustomAttribute(fieldInfo, typeof(ParameterDefaultAttribute));
             return attribute;
         }
 
@@ -301,6 +444,7 @@ public class DSPSynthesizer : MonoBehaviour
         if (num_params == 0)
         {
             pane_height = 1;
+            return;
         }
 
         //if(current_highest_module == 0)
@@ -316,8 +460,8 @@ public class DSPSynthesizer : MonoBehaviour
         old_scale.x *= pane_width;
         old_scale.y *= pane_height;
 
-        Debug.Log("w:" + old_scale.x);
-        Debug.Log("h:" + old_scale.y);
+        //Debug.Log("w:" + old_scale.x);
+        //Debug.Log("h:" + old_scale.y);
 
         current_highest_module += pane_height;
 
@@ -334,10 +478,68 @@ public class DSPSynthesizer : MonoBehaviour
         {
             for (int col = 0; col < pane_width; col++)
             {
-                GameObject knob = Instantiate(KnobPrefab, new Vector3(offsets[col] - (float)pane_width / 2.0f, row + pane_bottom + 0.5f, 0f), Quaternion.Euler(new Vector3(180, 0, 0)));
+
+                float def = 0f;
+                ParameterRangeAttribute range = null;
+
+                switch (type)
+                {
+                    case NodeType.Oscillator:
+                        Enum.TryParse(names[count], out OscilatorNode.Parameters param);
+                        def = GetDefault(param, type).DefaultValue;
+                        range = GetRange(param, type);
+                        break;
+                    case NodeType.ADSR:
+                        Enum.TryParse(names[count], out ADSRNode.Parameters param1);
+                        def = GetDefault(param1, type).DefaultValue;
+                        range = GetRange(param1, type);
+                        break;
+                    case NodeType.Midi:
+                        Enum.TryParse(names[count], out MidiNode.Parameters param2);
+                        def = GetDefault(param2, type).DefaultValue;
+                        range = GetRange(param2, type);
+                        break;
+                    case NodeType.Mixer:
+                        Enum.TryParse(names[count], out MixerNode.Parameters param3);
+                        def = GetDefault(param3, type).DefaultValue;
+                        range = GetRange(param3, type);
+                        break;
+                    case NodeType.Attenuator:
+                        Enum.TryParse(names[count], out AttenuatorNode.Parameters param4);
+                        def = GetDefault(param4, type).DefaultValue;
+                        range = GetRange(param4, type);
+                        break;
+                    case NodeType.M2S:
+                        Enum.TryParse(names[count], out MonoToStereoNode.Parameters param5);
+                        def = GetDefault(param5, type).DefaultValue;
+                        range = GetRange(param5, type);
+                        break;
+                    case NodeType.VCA:
+                        Enum.TryParse(names[count], out VCANode.Parameters param6);
+                        def = GetDefault(param6, type).DefaultValue;
+                        range = GetRange(param6, type);
+                        break;
+                }
+
+                Debug.Log("at type " + type);
+                Debug.Log("at param " + names[count]);
+
+                float percent = (def - range.Min) / (range.Max - range.Min); //[0;1], rotation has to be here between (whyever) -45 and 225
+                float rot = percent * 270f - 45f;
+                
+
+                GameObject knob = Instantiate(KnobPrefab, new Vector3(offsets[col] - (float)pane_width / 2.0f, row + pane_bottom + 0.5f, 0f), Quaternion.Euler(new Vector3(180, 0, rot)));
                 knob.GetComponent<ParameterId>().Id = global_parameter_count;
                 knob.GetComponent<DialCB>().cb = On_Param_Change;
+
+                Transform knobPhysical = knob.GetComponentInChildren<Transform>();
+
                 paramter_cb.Add((Node, type, names[count]));
+
+                
+
+
+
                 global_parameter_count++;
 
                 // TODO make this maybe turn with the camera
@@ -346,7 +548,6 @@ public class DSPSynthesizer : MonoBehaviour
                 c_text.horizontalAlignment = HorizontalAlignmentOptions.Center;
                 c_text.text = names[count] + (global_parameter_count-1).ToString();
                 c_text.color = Color.black;
-                Debug.Log(c_text.text);
 
                 count++;
                 if (count == num_params)

@@ -8,7 +8,6 @@ using System;
 using Unity.Mathematics;
 using Unity.Collections.LowLevel.Unsafe;
 
-[BurstCompile(CompileSynchronously = true)]
 public struct MidiNode : IAudioKernel<MidiNode.Parameters, MidiNode.Providers>
 {
     public enum Parameters
@@ -41,7 +40,14 @@ public struct MidiNode : IAudioKernel<MidiNode.Parameters, MidiNode.Providers>
 
     public void Execute(ref ExecuteContext<Parameters, Providers> context)
     {
+        //string te = context.Outputs.Count.ToString();
+        //Debug.Log(te);
+        //Debug.Log("b");
+
+
+
         if (context.Outputs.Count != 3) return;
+        //Debug.Log("a");
 
         //SampleBuffer gatesOutput = context.Outputs.GetSampleBuffer(0);
         //var gatesOutputBuffer = gatesOutput.Buffer;
@@ -136,6 +142,7 @@ public struct MidiNode : IAudioKernel<MidiNode.Parameters, MidiNode.Providers>
                 {
                     int channel = AssignChannel(message.data1);
                     PressNote(message.data1, channel);
+                    Debug.Log("note");
                 }
                 else
                 {

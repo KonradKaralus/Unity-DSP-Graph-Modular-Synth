@@ -5,6 +5,10 @@ namespace LevelUP.Dial
 {
     public class Rotator : MonoBehaviour
     {
+
+        public float left_bound = 135f;
+        public float right_bound = 45f;
+
         [SerializeField] Transform linkedDial;
         [SerializeField] private int snapRotationAmount = 25;
         [SerializeField] private float angleTolerance;
@@ -101,6 +105,13 @@ namespace LevelUP.Dial
                                 return;
                             else
                             {
+
+
+                                if(linkedDial.localEulerAngles.z + snapRotationAmount > right_bound && linkedDial.localEulerAngles.z + snapRotationAmount <left_bound)
+                                {
+                                    return;
+                                }
+
                                 RotateDialClockwise();
                                 startAngle = currentAngle;
                             }
@@ -113,6 +124,15 @@ namespace LevelUP.Dial
                                 return;
                             else
                             {
+
+
+                                if (linkedDial.localEulerAngles.z - snapRotationAmount > right_bound && linkedDial.localEulerAngles.z - snapRotationAmount < left_bound)
+                                {
+                                    return;
+                                }
+
+
+
                                 RotateDialAntiClockwise();
                                 startAngle = currentAngle;
                             }
@@ -122,11 +142,25 @@ namespace LevelUP.Dial
                     {
                         if (startAngle < currentAngle)
                         {
+                            if (linkedDial.localEulerAngles.z - snapRotationAmount > right_bound && linkedDial.localEulerAngles.z - snapRotationAmount < left_bound)
+                            {
+                                return;
+                            }
+
+
+
                             RotateDialAntiClockwise();
                             startAngle = currentAngle;
                         }
                         else if (startAngle > currentAngle)
                         {
+
+                            if (linkedDial.localEulerAngles.z + snapRotationAmount > right_bound && linkedDial.localEulerAngles.z + snapRotationAmount < left_bound)
+                            {
+                                return;
+                            }
+
+
                             RotateDialClockwise();
                             startAngle = currentAngle;
                         }

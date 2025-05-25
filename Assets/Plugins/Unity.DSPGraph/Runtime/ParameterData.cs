@@ -42,7 +42,7 @@ namespace Unity.Audio
     [AttributeUsage(AttributeTargets.Field)]
     public class ParameterDefaultAttribute : Attribute
     {
-        internal readonly float DefaultValue;
+        public readonly float DefaultValue;
 
         /// <summary></summary>
         /// <param name="defaultVal">The default value for this parameter</param>

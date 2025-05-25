@@ -11,6 +11,7 @@ public struct AttenuatorNode : IAudioKernel<AttenuatorNode.Parameters, Attenuato
 {
     public enum Parameters
     {
+        [ParameterDefault(1f), ParameterRange(0f, 20f)]
         Multiplier
     }
     public enum Providers

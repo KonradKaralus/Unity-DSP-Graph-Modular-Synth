@@ -10,9 +10,13 @@ public struct ADSRNode : IAudioKernel<ADSRNode.Parameters, ADSRNode.Providers>
 {
     public enum Parameters
     {
+        [ParameterDefault(0f), ParameterRange(0f, 20f)]
         Attack,
+        [ParameterDefault(0f), ParameterRange(0f, 20f)]
         Decay,
+        [ParameterDefault(1f), ParameterRange(0f, 20f)]
         Sustain,
+        [ParameterDefault(0f), ParameterRange(0f, 20f)]
         Release
     }
 

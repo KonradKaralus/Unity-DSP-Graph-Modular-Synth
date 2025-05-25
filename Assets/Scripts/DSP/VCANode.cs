@@ -9,6 +9,7 @@ public struct VCANode : IAudioKernel<VCANode.Parameters, VCANode.Providers>
 {
     public enum Parameters
     {
+        [ParameterDefault(1.0f), ParameterRange(0f, 10f)]
         Multiplier,
     }
 

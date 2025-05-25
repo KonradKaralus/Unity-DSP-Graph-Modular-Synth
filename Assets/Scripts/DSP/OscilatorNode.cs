@@ -15,7 +15,7 @@ public struct OscilatorNode : IAudioKernel<OscilatorNode.Parameters, OscilatorNo
         Frequency,
         [ParameterDefault(0f), ParameterRange(0f, 4f)]
         Mode,
-        [ParameterDefault(0f)]
+        [ParameterDefault(0f), ParameterRange(0f, 1f)]
         FMMultiplier,
         [ParameterDefault(0f), ParameterRange(0f, 1f)]
         Unidirectional
