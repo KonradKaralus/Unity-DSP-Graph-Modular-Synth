@@ -18,44 +18,44 @@ public class DSPSynthesizer : MonoBehaviour
     private int global_parameter_count = 0;
 
     DSPGraph _Graph;
-    MyAudioDriver _Driver;
-    AudioOutputHandle _OutputHandle;
+    // MyAudioDriver _Driver;
+    // AudioOutputHandle _OutputHandle;
 
-    DSPNode _Oscilator1;
-    DSPNode _Oscilator2;
-    DSPNode _Oscilator3;
-    DSPNode _Oscilator4;
+    // DSPNode _Oscilator1;
+    // DSPNode _Oscilator2;
+    // DSPNode _Oscilator3;
+    // DSPNode _Oscilator4;
 
-    DSPNode _ADSR1;
-    DSPNode _ADSR2;
-    DSPNode _ADSR3;
-    DSPNode _ADSR4;
+    // DSPNode _ADSR1;
+    // DSPNode _ADSR2;
+    // DSPNode _ADSR3;
+    // DSPNode _ADSR4;
 
-    DSPNode _VCA1;
-    DSPNode _VCA2;
+    // DSPNode _VCA1;
+    // DSPNode _VCA2;
 
-    DSPNode _Mixer3;
-    DSPNode _Mixer4;
+    // DSPNode _Mixer3;
+    // DSPNode _Mixer4;
 
-    DSPNode _Midi;
+    // DSPNode _Midi;
 
-    DSPNode _Attenuator;
+    // DSPNode _Attenuator;
 
-    DSPNode _MonoToStereo;
+    // DSPNode _MonoToStereo;
 
-    DSPNode _Scope;
-    DSPNode _Spectrum;
+    // DSPNode _Scope;
+    // DSPNode _Spectrum;
 
-    ScopeRenderer _ScopeRenderer;
-    SpectrumRenderer _SpectrumRenderer;
+    // ScopeRenderer _ScopeRenderer;
+    // SpectrumRenderer _SpectrumRenderer;
 
-    private List<(DSPNode,NodeType, string)> paramter_cb = new List<(DSPNode,NodeType, string)>();
+    private List<(DSPNode, NodeType, string)> paramter_cb = new List<(DSPNode, NodeType, string)>();
 
     public enum NodeType
     {
         Oscillator,
         ADSR,
-        VCA, 
+        VCA,
         Mixer,
         Attenuator,
         M2S,
@@ -65,21 +65,52 @@ public class DSPSynthesizer : MonoBehaviour
     }
 
 
+    private (int, int) ConnectSource; // (id, port)
+
+    public void Set_Conn_Source(int id, int port)
+    {
+        ConnectSource = (id, port);
+
+    }
+
+    public void Try_Connect(int id, int port)
+    {
+        if (ConnectSource.Item1 == null)
+        {
+            Debug.Log("Tried to connect without Source");
+            return;
+        }
+
+        var ConnectDest = (id, port);
+
+        using (var block = _Graph.CreateCommandBlock())
+        {
+            // block.Connect(_Midi, 2, _Oscilator1, 2); // midi retrigger to oscilator reset phase
+
+            block.Connect(paramter_cb[ConnectSource.Item1], ConnectSource.Item2, paramter_cb[ConnectDest.id], ConnectDest.port);
+
+
+        }
+
+        ConnectSource = (null, null);
+    }
+
 
     public void On_Param_Change(float val, int id)
     {
         // val cannot be 45 < val < 135 to account for the deadzone at the bottom
 
-        if(val > 45f && val < 135f)
+        if (val > 45f && val < 135f)
         {
             Debug.LogWarning("Encountered out of bounds knob val");
             return;
         }
 
-        if( val >= 135f)
+        if (val >= 135f)
         {
             val = val - 135f;
-        } else
+        }
+        else
         {
             val = val + 225f;
         }
@@ -96,49 +127,49 @@ public class DSPSynthesizer : MonoBehaviour
 
 
         using (var block = _Graph.CreateCommandBlock())
-            {
-                Debug.Log("set to" + val);
+        {
+            Debug.Log("set to" + val);
 
 
-                DSPNode obj = paramter_cb[id].Item1;
-                var type = paramter_cb[id].Item2;
+            DSPNode obj = paramter_cb[id].Item1;
+            var type = paramter_cb[id].Item2;
             //var block = _Graph.CreateCommandBlock();
 
-                ParameterRangeAttribute range = null;
-                float new_val = 0f;
+            ParameterRangeAttribute range = null;
+            float new_val = 0f;
 
-                switch (type)
-                {
-                    case NodeType.Oscillator:
-                        Enum.TryParse(paramter_cb[id].Item3, out OscilatorNode.Parameters param1);
+            switch (type)
+            {
+                case NodeType.Oscillator:
+                    Enum.TryParse(paramter_cb[id].Item3, out OscilatorNode.Parameters param1);
 
-                        range = GetRange(param1, type);
-                        new_val = (range.Max - range.Min) * val + range.Min;
+                    range = GetRange(param1, type);
+                    new_val = (range.Max - range.Min) * val + range.Min;
 
-                        block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(obj, param1, new_val);
-                        break;
+                    block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(obj, param1, new_val);
+                    break;
 
-                    case NodeType.ADSR:
-                        Enum.TryParse(paramter_cb[id].Item3, out ADSRNode.Parameters param2);
+                case NodeType.ADSR:
+                    Enum.TryParse(paramter_cb[id].Item3, out ADSRNode.Parameters param2);
                     //Debug.Log("ADSR" + val);
 
-                        range = GetRange(param2, type);
-                        new_val = (range.Max - range.Min) * val + range.Min;
+                    range = GetRange(param2, type);
+                    new_val = (range.Max - range.Min) * val + range.Min;
 
                     block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(obj, param2, new_val);
-                        break;
+                    break;
 
-                    case NodeType.VCA:
+                case NodeType.VCA:
 
 
-                        Enum.TryParse(paramter_cb[id].Item3, out VCANode.Parameters param3);
-                        range = GetRange(param3, type);
-                        new_val = (range.Max - range.Min) * val + range.Min;
+                    Enum.TryParse(paramter_cb[id].Item3, out VCANode.Parameters param3);
+                    range = GetRange(param3, type);
+                    new_val = (range.Max - range.Min) * val + range.Min;
                     block.SetFloat<VCANode.Parameters, VCANode.Providers, VCANode>(obj, param3, new_val);
 
-                        break;
-                }
+                    break;
             }
+        }
     }
     void Start()
     {
@@ -177,8 +208,8 @@ public class DSPSynthesizer : MonoBehaviour
             var midi = CreateMidi(block);
             var m2s = CreateMonoToStereo(block);
 
-            block.Connect(midi,0, adsr,0);
-            block.Connect(midi,1, osc1,1);
+            block.Connect(midi, 0, adsr, 0);
+            block.Connect(midi, 1, osc1, 1);
             block.Connect(midi, 2, osc1, 2);
             block.Connect(adsr, 0, vca, 0);
             block.Connect(osc1, 0, vca, 1);
@@ -190,139 +221,139 @@ public class DSPSynthesizer : MonoBehaviour
         }
     }
 
-    void CreateSynth0()
-    {
-        // create graph structure
-        using (var block = _Graph.CreateCommandBlock())
-        {
-            //
-            // create nodes
-            //
-            _Oscilator1 = CreateOscilator(block);
-            _Oscilator2 = CreateOscilator(block);
-            _Oscilator3 = CreateOscilator(block);
-            _Oscilator4 = CreateOscilator(block);
+    // void CreateSynth0()
+    // {
+    //     // create graph structure
+    //     using (var block = _Graph.CreateCommandBlock())
+    //     {
+    //         //
+    //         // create nodes
+    //         //
+    //         _Oscilator1 = CreateOscilator(block);
+    //         _Oscilator2 = CreateOscilator(block);
+    //         _Oscilator3 = CreateOscilator(block);
+    //         _Oscilator4 = CreateOscilator(block);
 
-            _ADSR1 = CreateADSR(block);
-            _ADSR2 = CreateADSR(block);
-            _ADSR3 = CreateADSR(block);
-            _ADSR4 = CreateADSR(block);
+    //         _ADSR1 = CreateADSR(block);
+    //         _ADSR2 = CreateADSR(block);
+    //         _ADSR3 = CreateADSR(block);
+    //         _ADSR4 = CreateADSR(block);
 
-            _VCA1 = CreateVCA(block);
-            _VCA2 = CreateVCA(block);
+    //         _VCA1 = CreateVCA(block);
+    //         _VCA2 = CreateVCA(block);
 
-            _Mixer3 = CreateMixer(block);
-            _Mixer4 = CreateMixer(block);
+    //         _Mixer3 = CreateMixer(block);
+    //         _Mixer4 = CreateMixer(block);
 
-            _Midi = CreateMidi(block);
+    //         _Midi = CreateMidi(block);
 
-            _Attenuator = CreateAttenuator(block);
+    //         _Attenuator = CreateAttenuator(block);
 
-            _MonoToStereo = CreateMonoToStereo(block);
+    //         _MonoToStereo = CreateMonoToStereo(block);
 
-            _Scope = CreateMonoScope(block);
-            _Spectrum = CreateSpectrum(block);
+    //         _Scope = CreateMonoScope(block);
+    //         _Spectrum = CreateSpectrum(block);
 
-            //
-            // connect nodes
-            //
-            block.Connect(_Midi, 0, _ADSR1, 0); // midi gate to adsr
-            block.Connect(_Midi, 0, _ADSR2, 0);
-            block.Connect(_Midi, 0, _ADSR3, 0);
-            block.Connect(_Midi, 0, _ADSR4, 0);
+    //         //
+    //         // connect nodes
+    //         //
+    //         block.Connect(_Midi, 0, _ADSR1, 0); // midi gate to adsr
+    //         block.Connect(_Midi, 0, _ADSR2, 0);
+    //         block.Connect(_Midi, 0, _ADSR3, 0);
+    //         block.Connect(_Midi, 0, _ADSR4, 0);
 
-            block.Connect(_Midi, 1, _Oscilator1, 1); // midi note to oscilator pitch
-            block.Connect(_Midi, 1, _Oscilator2, 1);
-            block.Connect(_Midi, 1, _Oscilator3, 1);
-            block.Connect(_Midi, 1, _Oscilator4, 1);
+    //         block.Connect(_Midi, 1, _Oscilator1, 1); // midi note to oscilator pitch
+    //         block.Connect(_Midi, 1, _Oscilator2, 1);
+    //         block.Connect(_Midi, 1, _Oscilator3, 1);
+    //         block.Connect(_Midi, 1, _Oscilator4, 1);
 
-            block.Connect(_Midi, 2, _Oscilator1, 2); // midi retrigger to oscilator reset phase
-            block.Connect(_Midi, 2, _Oscilator2, 2);
-            block.Connect(_Midi, 2, _Oscilator3, 2);
-            block.Connect(_Midi, 2, _Oscilator4, 2);
+    //         block.Connect(_Midi, 2, _Oscilator1, 2); // midi retrigger to oscilator reset phase
+    //         block.Connect(_Midi, 2, _Oscilator2, 2);
+    //         block.Connect(_Midi, 2, _Oscilator3, 2);
+    //         block.Connect(_Midi, 2, _Oscilator4, 2);
 
-            block.Connect(_ADSR1, 0, _VCA1, 0); // adsr gate to vca voltage
-            block.Connect(_ADSR2, 0, _VCA2, 0);
+    //         block.Connect(_ADSR1, 0, _VCA1, 0); // adsr gate to vca voltage
+    //         block.Connect(_ADSR2, 0, _VCA2, 0);
 
-            block.Connect(_Oscilator1, 0, _VCA1, 1); // oscilator out to vca in
-            block.Connect(_Oscilator2, 0, _VCA2, 1);
+    //         block.Connect(_Oscilator1, 0, _VCA1, 1); // oscilator out to vca in
+    //         block.Connect(_Oscilator2, 0, _VCA2, 1);
 
-            block.Connect(_VCA1, 0, _Oscilator3, 0); // vca out to oscilator fm
-            block.Connect(_VCA2, 0, _Oscilator4, 0);
+    //         block.Connect(_VCA1, 0, _Oscilator3, 0); // vca out to oscilator fm
+    //         block.Connect(_VCA2, 0, _Oscilator4, 0);
 
-            block.Connect(_ADSR3, 0, _Mixer3, 1); // adsr gate to mixer cv
-            block.Connect(_ADSR4, 0, _Mixer4, 1);
+    //         block.Connect(_ADSR3, 0, _Mixer3, 1); // adsr gate to mixer cv
+    //         block.Connect(_ADSR4, 0, _Mixer4, 1);
 
-            block.Connect(_Oscilator3, 0, _Mixer3, 0); // oscilator out to mixer in
-            block.Connect(_Oscilator4, 0, _Mixer4, 0);
+    //         block.Connect(_Oscilator3, 0, _Mixer3, 0); // oscilator out to mixer in
+    //         block.Connect(_Oscilator4, 0, _Mixer4, 0);
 
-            block.Connect(_Mixer3, 0, _Attenuator, 0); // mixer out to attenuator in
-            block.Connect(_Mixer4, 0, _Attenuator, 0);
+    //         block.Connect(_Mixer3, 0, _Attenuator, 0); // mixer out to attenuator in
+    //         block.Connect(_Mixer4, 0, _Attenuator, 0);
 
-            block.Connect(_Attenuator, 0, _MonoToStereo, 0); // attenuator out to monotostereo left
-            block.Connect(_Attenuator, 0, _MonoToStereo, 1); // attenuator out to monotostereo right
+    //         block.Connect(_Attenuator, 0, _MonoToStereo, 0); // attenuator out to monotostereo left
+    //         block.Connect(_Attenuator, 0, _MonoToStereo, 1); // attenuator out to monotostereo right
 
-            block.Connect(_MonoToStereo, 0, _Graph.RootDSP, 0); // monotostereo out to output
+    //         block.Connect(_MonoToStereo, 0, _Graph.RootDSP, 0); // monotostereo out to output
 
-            block.Connect(_Attenuator, 0, _Scope, 0);
-            block.Connect(_Attenuator, 0, _Spectrum, 0);
+    //         block.Connect(_Attenuator, 0, _Scope, 0);
+    //         block.Connect(_Attenuator, 0, _Spectrum, 0);
 
-            //
-            // parameters
-            //
+    //         //
+    //         // parameters
+    //         //
 
 
-            block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(_Oscilator1, OscilatorNode.Parameters.Frequency, 130.813f);
-            block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(_Oscilator1, OscilatorNode.Parameters.Mode, (float)OscilatorNode.Mode.Sine);
+    //         block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(_Oscilator1, OscilatorNode.Parameters.Frequency, 130.813f);
+    //         block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(_Oscilator1, OscilatorNode.Parameters.Mode, (float)OscilatorNode.Mode.Sine);
 
-            block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(_Oscilator2, OscilatorNode.Parameters.Frequency, 130.813f);
-            block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(_Oscilator2, OscilatorNode.Parameters.Mode, (float)OscilatorNode.Mode.Sine);
+    //         block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(_Oscilator2, OscilatorNode.Parameters.Frequency, 130.813f);
+    //         block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(_Oscilator2, OscilatorNode.Parameters.Mode, (float)OscilatorNode.Mode.Sine);
 
-            block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(_Oscilator3, OscilatorNode.Parameters.Frequency, 261.626f);
-            block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(_Oscilator3, OscilatorNode.Parameters.Mode, (float)OscilatorNode.Mode.Sine);
-            block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(_Oscilator3, OscilatorNode.Parameters.FMMultiplier, 0.5f);
+    //         block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(_Oscilator3, OscilatorNode.Parameters.Frequency, 261.626f);
+    //         block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(_Oscilator3, OscilatorNode.Parameters.Mode, (float)OscilatorNode.Mode.Sine);
+    //         block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(_Oscilator3, OscilatorNode.Parameters.FMMultiplier, 0.5f);
 
-            block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(_Oscilator4, OscilatorNode.Parameters.Frequency, 130.813f);
-            block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(_Oscilator4, OscilatorNode.Parameters.Mode, (float)OscilatorNode.Mode.Sine);
-            block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(_Oscilator4, OscilatorNode.Parameters.FMMultiplier, 0.4f);
+    //         block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(_Oscilator4, OscilatorNode.Parameters.Frequency, 130.813f);
+    //         block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(_Oscilator4, OscilatorNode.Parameters.Mode, (float)OscilatorNode.Mode.Sine);
+    //         block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(_Oscilator4, OscilatorNode.Parameters.FMMultiplier, 0.4f);
 
-            block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR1, ADSRNode.Parameters.Attack, 0.1f);
-            block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR1, ADSRNode.Parameters.Decay, 0.05f);
-            block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR1, ADSRNode.Parameters.Sustain, 0.5f);
-            block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR1, ADSRNode.Parameters.Release, 0.2f);
+    //         block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR1, ADSRNode.Parameters.Attack, 0.1f);
+    //         block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR1, ADSRNode.Parameters.Decay, 0.05f);
+    //         block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR1, ADSRNode.Parameters.Sustain, 0.5f);
+    //         block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR1, ADSRNode.Parameters.Release, 0.2f);
 
-            block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR2, ADSRNode.Parameters.Attack, 0.1f);
-            block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR2, ADSRNode.Parameters.Decay, 0.05f);
-            block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR2, ADSRNode.Parameters.Sustain, 0.5f);
-            block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR2, ADSRNode.Parameters.Release, 0.2f);
+    //         block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR2, ADSRNode.Parameters.Attack, 0.1f);
+    //         block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR2, ADSRNode.Parameters.Decay, 0.05f);
+    //         block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR2, ADSRNode.Parameters.Sustain, 0.5f);
+    //         block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR2, ADSRNode.Parameters.Release, 0.2f);
 
-            block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR3, ADSRNode.Parameters.Attack, 0.05f);
-            block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR3, ADSRNode.Parameters.Decay, 0.05f);
-            block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR3, ADSRNode.Parameters.Sustain, 0.5f);
-            block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR3, ADSRNode.Parameters.Release, 0.1f);
+    //         block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR3, ADSRNode.Parameters.Attack, 0.05f);
+    //         block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR3, ADSRNode.Parameters.Decay, 0.05f);
+    //         block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR3, ADSRNode.Parameters.Sustain, 0.5f);
+    //         block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR3, ADSRNode.Parameters.Release, 0.1f);
 
-            block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR4, ADSRNode.Parameters.Attack, 0.05f);
-            block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR4, ADSRNode.Parameters.Decay, 0.05f);
-            block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR4, ADSRNode.Parameters.Sustain, 0.5f);
-            block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR4, ADSRNode.Parameters.Release, 0.1f);
+    //         block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR4, ADSRNode.Parameters.Attack, 0.05f);
+    //         block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR4, ADSRNode.Parameters.Decay, 0.05f);
+    //         block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR4, ADSRNode.Parameters.Sustain, 0.5f);
+    //         block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(_ADSR4, ADSRNode.Parameters.Release, 0.1f);
 
-            block.SetFloat<VCANode.Parameters, VCANode.Providers, VCANode>(_VCA1, VCANode.Parameters.Multiplier, 1.0f);
-            block.SetFloat<VCANode.Parameters, VCANode.Providers, VCANode>(_VCA2, VCANode.Parameters.Multiplier, 1.0f);
+    //         block.SetFloat<VCANode.Parameters, VCANode.Providers, VCANode>(_VCA1, VCANode.Parameters.Multiplier, 1.0f);
+    //         block.SetFloat<VCANode.Parameters, VCANode.Providers, VCANode>(_VCA2, VCANode.Parameters.Multiplier, 1.0f);
 
-            block.SetFloat<AttenuatorNode.Parameters, AttenuatorNode.Providers, AttenuatorNode>(_Attenuator, AttenuatorNode.Parameters.Multiplier, 1.0f);
+    //         block.SetFloat<AttenuatorNode.Parameters, AttenuatorNode.Providers, AttenuatorNode>(_Attenuator, AttenuatorNode.Parameters.Multiplier, 1.0f);
 
-            block.SetFloat<ScopeNode.Parameters, ScopeNode.Providers, ScopeNode>(_Scope, ScopeNode.Parameters.Time, 0.05f);
-            block.SetFloat<ScopeNode.Parameters, ScopeNode.Providers, ScopeNode>(_Scope, ScopeNode.Parameters.TriggerTreshold, 0f);
+    //         block.SetFloat<ScopeNode.Parameters, ScopeNode.Providers, ScopeNode>(_Scope, ScopeNode.Parameters.Time, 0.05f);
+    //         block.SetFloat<ScopeNode.Parameters, ScopeNode.Providers, ScopeNode>(_Scope, ScopeNode.Parameters.TriggerTreshold, 0f);
 
-            block.SetFloat<SpectrumNode.Parameters, SpectrumNode.Providers, SpectrumNode>(_Spectrum, SpectrumNode.Parameters.Window, (float)SpectrumNode.WindowType.BlackmanHarris);
-        }
+    //         block.SetFloat<SpectrumNode.Parameters, SpectrumNode.Providers, SpectrumNode>(_Spectrum, SpectrumNode.Parameters.Window, (float)SpectrumNode.WindowType.BlackmanHarris);
+    //     }
 
-        //_ScopeRenderer = SpawnScopeRenderer(_Scope);
-        //_ScopeRenderer.Height = 5.01f;
-        //_ScopeRenderer.Offset = 0f;
+    //     //_ScopeRenderer = SpawnScopeRenderer(_Scope);
+    //     //_ScopeRenderer.Height = 5.01f;
+    //     //_ScopeRenderer.Offset = 0f;
 
-        //_SpectrumRenderer = SpawnSpectrumRenderer(_Spectrum);
-    }
+    //     //_SpectrumRenderer = SpawnSpectrumRenderer(_Spectrum);
+    // }
 
     ScopeRenderer SpawnScopeRenderer(DSPNode scopeNode)
     {
@@ -467,7 +498,7 @@ public class DSPSynthesizer : MonoBehaviour
 
         pane.transform.localScale = old_scale;
 
-        if(num_params == 0)
+        if (num_params == 0)
         {
             return;
         }
@@ -526,7 +557,7 @@ public class DSPSynthesizer : MonoBehaviour
 
                 float percent = (def - range.Min) / (range.Max - range.Min); //[0;1], rotation has to be here between (whyever) -45 and 225
                 float rot = percent * 270f - 45f;
-                
+
 
                 GameObject knob = Instantiate(KnobPrefab, new Vector3(offsets[col] - (float)pane_width / 2.0f, row + pane_bottom + 0.5f, 0f), Quaternion.Euler(new Vector3(180, 0, rot)));
                 knob.GetComponent<ParameterId>().Id = global_parameter_count;
@@ -536,7 +567,7 @@ public class DSPSynthesizer : MonoBehaviour
 
                 paramter_cb.Add((Node, type, names[count]));
 
-                
+
 
 
 
@@ -546,7 +577,7 @@ public class DSPSynthesizer : MonoBehaviour
                 var label = Instantiate(KnobLabelPrefab, new Vector3(offsets[col] - (float)pane_width / 2.0f, row + pane_bottom + 0.9f, -0.11f), Quaternion.Euler(new Vector3(0, 0, 0)));
                 var c_text = label.GetComponent<TMP_Text>();
                 c_text.horizontalAlignment = HorizontalAlignmentOptions.Center;
-                c_text.text = names[count] + (global_parameter_count-1).ToString();
+                c_text.text = names[count] + (global_parameter_count - 1).ToString();
                 c_text.color = Color.black;
 
                 count++;
