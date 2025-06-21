@@ -18,8 +18,8 @@ public class DSPSynthesizer : MonoBehaviour
     private int global_parameter_count = 0;
 
     DSPGraph _Graph;
-    // MyAudioDriver _Driver;
-    // AudioOutputHandle _OutputHandle;
+    MyAudioDriver _Driver;
+    AudioOutputHandle _OutputHandle;
 
     // DSPNode _Oscilator1;
     // DSPNode _Oscilator2;
@@ -75,7 +75,7 @@ public class DSPSynthesizer : MonoBehaviour
 
     public void Try_Connect(int id, int port)
     {
-        if (ConnectSource.Item1 == null)
+        if (ConnectSource.Item1 == -1)
         {
             Debug.Log("Tried to connect without Source");
             return;
@@ -87,12 +87,12 @@ public class DSPSynthesizer : MonoBehaviour
         {
             // block.Connect(_Midi, 2, _Oscilator1, 2); // midi retrigger to oscilator reset phase
 
-            block.Connect(paramter_cb[ConnectSource.Item1], ConnectSource.Item2, paramter_cb[ConnectDest.id], ConnectDest.port);
+            block.Connect(paramter_cb[ConnectSource.Item1].Item1, ConnectSource.Item2, paramter_cb[ConnectDest.id].Item1, ConnectDest.port);
 
 
         }
 
-        ConnectSource = (null, null);
+        ConnectSource = (-1, -1);
     }
 
 
