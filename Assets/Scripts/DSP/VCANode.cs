@@ -43,7 +43,6 @@ public struct VCANode : IAudioKernel<VCANode.Parameters, VCANode.Providers>
         //        outputBuffer[s * output.Channels + c] = voltageBuffer[s * voltage.Channels + c] * inputBuffer[s * output.Channels + c] * multiplier;
         //    }
         //}
-
         SampleBuffer voltage = context.Inputs.GetSampleBuffer(0);
         SampleBuffer input = context.Inputs.GetSampleBuffer(1);
         SampleBuffer output = context.Outputs.GetSampleBuffer(0);

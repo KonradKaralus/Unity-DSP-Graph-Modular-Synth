@@ -224,6 +224,8 @@ MonoBehaviour:
     type: 3}
   KnobLabelPrefab: {fileID: 583736495553655816, guid: 7bbea93ed26090846a809ab5b445d3cd,
     type: 3}
+  PortPrefab: {fileID: 2474737576877769637, guid: d97b8b6879fbc0b408bc6483b3930863,
+    type: 3}
 --- !u!4 &357364867
 Transform:
   m_ObjectHideFlags: 0

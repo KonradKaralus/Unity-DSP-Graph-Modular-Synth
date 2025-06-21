@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.Reflection;
 using System;
 using TMPro;
+using Unity.Properties;
+using UnityEditor.PackageManager;
 
 public class DSPSynthesizer : MonoBehaviour
 {
@@ -13,9 +15,11 @@ public class DSPSynthesizer : MonoBehaviour
     public GameObject KnobPrefab;
     public GameObject PanePrefab;
     public GameObject KnobLabelPrefab;
+    public GameObject PortPrefab;
 
     private float current_highest_module = 0.0f;
     private int global_parameter_count = 0;
+    private int global_module_count = 0;
 
     DSPGraph _Graph;
     MyAudioDriver _Driver;
@@ -50,6 +54,7 @@ public class DSPSynthesizer : MonoBehaviour
     // SpectrumRenderer _SpectrumRenderer;
 
     private List<(DSPNode, NodeType, string)> paramter_cb = new List<(DSPNode, NodeType, string)>();
+    private List<DSPNode> port_cb = new List<DSPNode>();
 
     public enum NodeType
     {
@@ -64,13 +69,64 @@ public class DSPSynthesizer : MonoBehaviour
         Midi
     }
 
+    // (inputs/outpouts)
+    private (int, int) get_num_inputs(NodeType type) {
+        switch (type)
+        {
+            case NodeType.Oscillator:
+                return (3, 1);
+            case NodeType.ADSR:
+                return (1, 1);
+            case NodeType.VCA:
+                return (2, 1);
+            case NodeType.Mixer:
+                return (2, 1);
+            case NodeType.Attenuator:
+                return (1, 1);
+            case NodeType.M2S:
+                return (-1, -1); //dont know how this works
+            case NodeType.Scope:
+                return (-1, -1);
+            case NodeType.Midi:
+                return (0, 3);
+        }
+
+        Debug.Log("returned from get_num_inputs w/ type");
+        return (-1, 1);
+    
+    }
+
 
     private (int, int) ConnectSource; // (id, port)
+    private bool dangling = false;
+    private PortType? dangling_type = null;
+
+
+    public void On_Connect(int id, int port, PortType type) {
+        if(dangling)
+        {
+            if(dangling_type == type)
+            {
+                Debug.Log("Tried to connect a" + type.ToString() + "with the same type!");
+                return;
+            }
+
+            Try_Connect(id, port);
+
+            dangling = false;
+            dangling_type = null;
+        }
+        else
+        {
+            Set_Conn_Source(id, port);
+            dangling = true;
+            dangling_type = type;
+        }
+    }
 
     public void Set_Conn_Source(int id, int port)
     {
         ConnectSource = (id, port);
-
     }
 
     public void Try_Connect(int id, int port)
@@ -87,9 +143,9 @@ public class DSPSynthesizer : MonoBehaviour
         {
             // block.Connect(_Midi, 2, _Oscilator1, 2); // midi retrigger to oscilator reset phase
 
-            block.Connect(paramter_cb[ConnectSource.Item1].Item1, ConnectSource.Item2, paramter_cb[ConnectDest.id].Item1, ConnectDest.port);
+            var conn = block.Connect(port_cb[ConnectSource.Item1], ConnectSource.Item2, port_cb[ConnectDest.id], ConnectDest.port);
 
-
+            Debug.Log("Trying to connect");
         }
 
         ConnectSource = (-1, -1);
@@ -201,14 +257,14 @@ public class DSPSynthesizer : MonoBehaviour
     {
         using (var block = _Graph.CreateCommandBlock())
         {
+            var midi = CreateMidi(block);
             var osc1 = CreateOscilator(block);
             var adsr = CreateADSR(block);
             var vca = CreateVCA(block);
             var mixer = CreateMixer(block);
-            var midi = CreateMidi(block);
             var m2s = CreateMonoToStereo(block);
 
-            block.Connect(midi, 0, adsr, 0);
+            //block.Connect(midi, 0, adsr, 0);
             block.Connect(midi, 1, osc1, 1);
             block.Connect(midi, 2, osc1, 2);
             block.Connect(adsr, 0, vca, 0);
@@ -418,7 +474,6 @@ public class DSPSynthesizer : MonoBehaviour
 
     public static ParameterDefaultAttribute GetDefault<TParameters>(TParameters parameter, NodeType type) where TParameters : unmanaged, Enum
     {
-        // Hole das FieldInfo-Objekt für das Enum-Feld
 
         FieldInfo fieldInfo = null;
 
@@ -468,15 +523,23 @@ public class DSPSynthesizer : MonoBehaviour
         var names = Enum.GetNames(typeof(TParameters));
         var num_params = names.Length;
 
+        var num_ports = get_num_inputs(type);
+
         var pane_width = 3;
 
-        var pane_height = (int)Math.Ceiling((float)num_params / pane_width);
 
-        if (num_params == 0)
-        {
-            pane_height = 1;
-            return;
-        }
+        var rows_params = (int)Math.Ceiling((float)num_params / pane_width);
+        var rows_inputs = (int)Math.Ceiling((float)num_ports.Item1 / pane_width);
+        var rows_outputs = (int)Math.Ceiling((float)num_ports.Item2 / pane_width);
+
+        // #knobs + #inputs + #outputs
+        var pane_height = rows_params + rows_inputs + rows_outputs;
+
+        //if (num_params == 0)
+        //{
+        //    pane_height = 1;
+        //    return;
+        //}
 
         //if(current_highest_module == 0)
         //{
@@ -498,14 +561,15 @@ public class DSPSynthesizer : MonoBehaviour
 
         pane.transform.localScale = old_scale;
 
-        if (num_params == 0)
-        {
-            return;
-        }
+        //if (num_params == 0)
+        //{
+        //    return;
+        //}
 
-        var count = 0;
+        // params
+        var param_count = 0;
 
-        for (int row = 0; row < pane_height; row++)
+        for (int row = 0; row < rows_params; row++)
         {
             for (int col = 0; col < pane_width; col++)
             {
@@ -516,44 +580,44 @@ public class DSPSynthesizer : MonoBehaviour
                 switch (type)
                 {
                     case NodeType.Oscillator:
-                        Enum.TryParse(names[count], out OscilatorNode.Parameters param);
+                        Enum.TryParse(names[param_count], out OscilatorNode.Parameters param);
                         def = GetDefault(param, type).DefaultValue;
                         range = GetRange(param, type);
                         break;
                     case NodeType.ADSR:
-                        Enum.TryParse(names[count], out ADSRNode.Parameters param1);
+                        Enum.TryParse(names[param_count], out ADSRNode.Parameters param1);
                         def = GetDefault(param1, type).DefaultValue;
                         range = GetRange(param1, type);
                         break;
                     case NodeType.Midi:
-                        Enum.TryParse(names[count], out MidiNode.Parameters param2);
+                        Enum.TryParse(names[param_count], out MidiNode.Parameters param2);
                         def = GetDefault(param2, type).DefaultValue;
                         range = GetRange(param2, type);
                         break;
                     case NodeType.Mixer:
-                        Enum.TryParse(names[count], out MixerNode.Parameters param3);
+                        Enum.TryParse(names[param_count], out MixerNode.Parameters param3);
                         def = GetDefault(param3, type).DefaultValue;
                         range = GetRange(param3, type);
                         break;
                     case NodeType.Attenuator:
-                        Enum.TryParse(names[count], out AttenuatorNode.Parameters param4);
+                        Enum.TryParse(names[param_count], out AttenuatorNode.Parameters param4);
                         def = GetDefault(param4, type).DefaultValue;
                         range = GetRange(param4, type);
                         break;
                     case NodeType.M2S:
-                        Enum.TryParse(names[count], out MonoToStereoNode.Parameters param5);
+                        Enum.TryParse(names[param_count], out MonoToStereoNode.Parameters param5);
                         def = GetDefault(param5, type).DefaultValue;
                         range = GetRange(param5, type);
                         break;
                     case NodeType.VCA:
-                        Enum.TryParse(names[count], out VCANode.Parameters param6);
+                        Enum.TryParse(names[param_count], out VCANode.Parameters param6);
                         def = GetDefault(param6, type).DefaultValue;
                         range = GetRange(param6, type);
                         break;
                 }
 
                 Debug.Log("at type " + type);
-                Debug.Log("at param " + names[count]);
+                Debug.Log("at param " + names[param_count]);
 
                 float percent = (def - range.Min) / (range.Max - range.Min); //[0;1], rotation has to be here between (whyever) -45 and 225
                 float rot = percent * 270f - 45f;
@@ -565,11 +629,7 @@ public class DSPSynthesizer : MonoBehaviour
 
                 Transform knobPhysical = knob.GetComponentInChildren<Transform>();
 
-                paramter_cb.Add((Node, type, names[count]));
-
-
-
-
+                paramter_cb.Add((Node, type, names[param_count]));
 
                 global_parameter_count++;
 
@@ -577,16 +637,92 @@ public class DSPSynthesizer : MonoBehaviour
                 var label = Instantiate(KnobLabelPrefab, new Vector3(offsets[col] - (float)pane_width / 2.0f, row + pane_bottom + 0.9f, -0.11f), Quaternion.Euler(new Vector3(0, 0, 0)));
                 var c_text = label.GetComponent<TMP_Text>();
                 c_text.horizontalAlignment = HorizontalAlignmentOptions.Center;
-                c_text.text = names[count] + (global_parameter_count - 1).ToString();
+                c_text.text = names[param_count] + (global_parameter_count - 1).ToString();
                 c_text.color = Color.black;
 
-                count++;
-                if (count == num_params)
+                param_count++;
+                if (param_count == num_params)
                 {
                     break;
                 }
             }
         }
+
+        if(type == NodeType.M2S)
+        {
+            return;
+        }
+
+
+        // inputs
+
+
+        port_cb.Add(Node);
+
+
+
+        var inputs_count = 0;
+
+        for (int row = rows_params; row < rows_inputs + rows_params; row++)
+        {
+            for (int col = 0; col < pane_width; col++)
+            {
+                GameObject port = Instantiate(PortPrefab, new Vector3(offsets[col] - (float)pane_width / 2.0f, row + pane_bottom + 0.5f, -0.1f), Quaternion.Euler(new Vector3(90, 0, 0)));
+
+                port.GetComponent<PortIds>().ModuleId = global_module_count;
+                port.GetComponent<PortIds>().PortId = inputs_count;
+                port.GetComponent<PortIds>().type = PortType.Input;
+
+                port.GetComponent<PortCB>().cb = On_Connect;
+
+                var label = Instantiate(KnobLabelPrefab, new Vector3(offsets[col] - (float)pane_width / 2.0f, row + pane_bottom + 0.9f, -0.11f), Quaternion.Euler(new Vector3(0, 0, 0)));
+                var c_text = label.GetComponent<TMP_Text>();
+                c_text.horizontalAlignment = HorizontalAlignmentOptions.Center;
+                c_text.text = "Input Port" + inputs_count.ToString();
+                c_text.color = Color.black;
+
+                inputs_count++;
+                if (inputs_count == num_ports.Item1)
+                {
+                    break;
+                }
+
+            }
+        }
+
+
+        //outputs
+
+        var outputs_count = 0;
+
+        for (int row = rows_params + rows_inputs; row < rows_inputs + rows_params + rows_outputs; row++)
+        {
+            for (int col = 0; col < pane_width; col++)
+            {
+                GameObject port = Instantiate(PortPrefab, new Vector3(offsets[col] - (float)pane_width / 2.0f, row + pane_bottom + 0.5f, -0.1f), Quaternion.Euler(new Vector3(90, 0, 0)));
+
+                port.GetComponent<PortIds>().ModuleId = global_module_count;
+                port.GetComponent<PortIds>().PortId = outputs_count;
+                port.GetComponent<PortIds>().type = PortType.Output;
+
+                port.GetComponent<PortCB>().cb = On_Connect;
+
+                var label = Instantiate(KnobLabelPrefab, new Vector3(offsets[col] - (float)pane_width / 2.0f, row + pane_bottom + 0.9f, -0.11f), Quaternion.Euler(new Vector3(0, 0, 0)));
+                var c_text = label.GetComponent<TMP_Text>();
+                c_text.horizontalAlignment = HorizontalAlignmentOptions.Center;
+                c_text.text = "Output Port" + outputs_count.ToString();
+                c_text.color = Color.black;
+
+                outputs_count++;
+                if (outputs_count == num_ports.Item2)
+                {
+                    break;
+                }
+
+            }
+        }
+
+        global_module_count += 1;
     }
 
     private DSPNode CreateOscilator(DSPCommandBlock block)
