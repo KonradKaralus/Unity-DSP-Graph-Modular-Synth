@@ -100,9 +100,10 @@ public class DSPSynthesizer : MonoBehaviour
     private (int, int) ConnectSource; // (id, port)
     private bool dangling = false;
     private PortType? dangling_type = null;
+    private Vector3? dangling_pos = null;
 
 
-    public void On_Connect(int id, int port, PortType type) {
+    public void On_Connect(int id, int port, PortType type, Vector3 transform) {
         if(dangling)
         {
             if(dangling_type == type)
@@ -111,16 +112,18 @@ public class DSPSynthesizer : MonoBehaviour
                 return;
             }
 
-            Try_Connect(id, port);
+            Try_Connect(id, port, transform);
 
             dangling = false;
             dangling_type = null;
+            dangling_pos = null;
         }
         else
         {
             Set_Conn_Source(id, port);
             dangling = true;
             dangling_type = type;
+            dangling_pos = transform;
         }
     }
 
@@ -129,7 +132,7 @@ public class DSPSynthesizer : MonoBehaviour
         ConnectSource = (id, port);
     }
 
-    public void Try_Connect(int id, int port)
+    public void Try_Connect(int id, int port, Vector3 pos)
     {
         if (ConnectSource.Item1 == -1)
         {
@@ -139,16 +142,53 @@ public class DSPSynthesizer : MonoBehaviour
 
         var ConnectDest = (id, port);
 
-        using (var block = _Graph.CreateCommandBlock())
+
+        if (dangling_type == PortType.Output)
         {
-            // block.Connect(_Midi, 2, _Oscilator1, 2); // midi retrigger to oscilator reset phase
 
-            var conn = block.Connect(port_cb[ConnectSource.Item1], ConnectSource.Item2, port_cb[ConnectDest.id], ConnectDest.port);
+            using (var block = _Graph.CreateCommandBlock())
+            {
+                // block.Connect(_Midi, 2, _Oscilator1, 2); // midi retrigger to oscilator reset phase
 
-            Debug.Log("Trying to connect");
+                var conn = block.Connect(port_cb[ConnectSource.Item1], ConnectSource.Item2, port_cb[ConnectDest.id], ConnectDest.port);
+
+                Debug.Log("Trying to connect");
+            }
+
+        } else
+        {
+            using (var block = _Graph.CreateCommandBlock())
+            {
+                // block.Connect(_Midi, 2, _Oscilator1, 2); // midi retrigger to oscilator reset phase
+
+                var conn = block.Connect(port_cb[ConnectDest.id], ConnectDest.port, port_cb[ConnectSource.Item1], ConnectSource.Item2);
+
+                Debug.Log("Trying to connect");
+            }
         }
 
+
+
+            Draw_Port_Line(dangling_pos.Value, pos);
+
         ConnectSource = (-1, -1);
+    }
+
+    public void Draw_Port_Line(Vector3 start, Vector3 stop)
+    {
+        LineRenderer lineRenderer = gameObject.AddComponent<LineRenderer>();
+
+
+        lineRenderer.material = new Material(Shader.Find("Sprites/Default"));
+        lineRenderer.startColor = Color.red;
+        lineRenderer.endColor = Color.red;
+        lineRenderer.startWidth = 0.1f;
+        lineRenderer.endWidth = 0.1f;
+
+        lineRenderer.positionCount = 2;
+
+        lineRenderer.SetPosition(0, start + new Vector3(0f,0f,-0.1f));
+        lineRenderer.SetPosition(1, stop + new Vector3(0f, 0f, -0.1f));
     }
 
 

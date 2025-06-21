@@ -8,7 +8,7 @@ public interface IPort
 
 public class PortCB : MonoBehaviour, IPort
 {
-    public delegate void Callback(int id, int port, PortType type);
+    public delegate void Callback(int id, int port, PortType type, Vector3 transform);
 
     public Callback cb;
 
@@ -16,6 +16,6 @@ public class PortCB : MonoBehaviour, IPort
     {
 
         Debug.Log("Port touched");
-        cb(GetComponent<PortIds>().ModuleId, GetComponent<PortIds>().PortId, GetComponent<PortIds>().type);
+        cb(GetComponent<PortIds>().ModuleId, GetComponent<PortIds>().PortId, GetComponent<PortIds>().type, GetComponent<Transform>().position);
     }
 }
