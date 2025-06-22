@@ -3,10 +3,25 @@ using System.Collections;
 using Unity.Audio;
 using Unity.Mathematics;
 using Unity.Burst;
+using System.Collections.Generic;
+using System;
 
 [BurstCompile(CompileSynchronously = true)]
-public struct MonoToStereoNode : IAudioKernel<MonoToStereoNode.Parameters, MonoToStereoNode.Providers>
+public struct MonoToStereoNode : DSP_Node_Wrapper<MonoToStereoNode.Parameters, MonoToStereoNode.Providers>
 {
+
+    public static DSP_Node_Info Get_Node_Info()
+    {
+        return new DSP_Node_Info(
+            new List<(string, float, (float, float))>
+            {
+
+            },
+            0,
+            0
+        );
+    }
+
     public enum Parameters
     {
     }

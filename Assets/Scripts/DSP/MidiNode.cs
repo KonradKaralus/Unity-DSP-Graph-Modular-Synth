@@ -7,9 +7,21 @@ using System.Runtime.InteropServices;
 using System;
 using Unity.Mathematics;
 using Unity.Collections.LowLevel.Unsafe;
+using System.Collections.Generic;
 
-public struct MidiNode : IAudioKernel<MidiNode.Parameters, MidiNode.Providers>
+public struct MidiNode : DSP_Node_Wrapper<MidiNode.Parameters, MidiNode.Providers>
 {
+    public static DSP_Node_Info Get_Node_Info()
+    {
+        return new DSP_Node_Info(
+            new List<(string, float, (float, float))>
+            {
+            },  
+            0,
+            3
+        );
+    }
+
     public enum Parameters
     {
     }

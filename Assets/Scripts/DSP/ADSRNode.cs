@@ -4,19 +4,37 @@ using Unity.Audio;
 using Unity.Collections;
 using Unity.Burst;
 using Unity.Mathematics;
+using System.Collections.Generic;
+using System;
 
 [BurstCompile(CompileSynchronously = true)]
-public struct ADSRNode : IAudioKernel<ADSRNode.Parameters, ADSRNode.Providers>
+//public struct ADSRNode : IAudioKernel<ADSRNode.Parameters, ADSRNode.Providers>
+public struct ADSRNode: DSP_Node_Wrapper<ADSRNode.Parameters, ADSRNode.Providers>
 {
+
+    public static DSP_Node_Info Get_Node_Info()
+    {
+        return new DSP_Node_Info(
+            new List<(string, float, (float, float))> {
+            ("Attack", 0f, (0f, 2f)),
+            ("Decay", 0f, (0f, 2f)),
+            ("Sustain", 1f, (0f, 1f)),
+            ("Release", 0f, (0f, 2f)),
+            },
+            1,
+            1
+        );
+    }
+
     public enum Parameters
     {
-        [ParameterDefault(0f), ParameterRange(0f, 20f)]
+        [ParameterDefault(0f), ParameterRange(0f, 2f)]
         Attack,
-        [ParameterDefault(0f), ParameterRange(0f, 20f)]
+        [ParameterDefault(0f), ParameterRange(0f, 2f)]
         Decay,
-        [ParameterDefault(1f), ParameterRange(0f, 20f)]
+        [ParameterDefault(1f), ParameterRange(0f, 1f)]
         Sustain,
-        [ParameterDefault(0f), ParameterRange(0f, 20f)]
+        [ParameterDefault(0f), ParameterRange(0f, 2f)]
         Release
     }
 

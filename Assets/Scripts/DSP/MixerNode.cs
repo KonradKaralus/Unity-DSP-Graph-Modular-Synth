@@ -4,10 +4,25 @@ using Unity.Audio;
 using Unity.Mathematics;
 using Unity.Collections;
 using Unity.Burst;
+using System.Collections.Generic;
+using System;
 
 [BurstCompile(CompileSynchronously=true)]
-public struct MixerNode : IAudioKernel<MixerNode.Parameters, MixerNode.Providers>
+public struct MixerNode : DSP_Node_Wrapper<MixerNode.Parameters, MixerNode.Providers>
 {
+
+
+    public static DSP_Node_Info Get_Node_Info()
+    {
+        return new DSP_Node_Info(
+            new List<(string, float, (float, float))>
+            {
+            },
+            2,
+            1
+        );
+    }
+
     public enum Parameters { }
     public enum Providers { }
 

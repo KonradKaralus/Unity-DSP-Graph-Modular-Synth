@@ -5,13 +5,27 @@ using Unity.Mathematics;
 using Unity.CodeEditor;
 using Unity.Burst;
 using Unity.Collections;
+using System.Collections.Generic;
+using System;
 
 [BurstCompile(CompileSynchronously = true)]
-public struct AttenuatorNode : IAudioKernel<AttenuatorNode.Parameters, AttenuatorNode.Providers>
+public struct AttenuatorNode : DSP_Node_Wrapper<AttenuatorNode.Parameters, AttenuatorNode.Providers>
 {
+
+    public static DSP_Node_Info Get_Node_Info()
+    {
+        return new DSP_Node_Info(
+            new List<(string, float, (float, float))> {
+                ("Multiplier", 1f, (0f, 3f)),
+            },
+            1,
+            1
+        );
+    }
+
     public enum Parameters
     {
-        [ParameterDefault(1f), ParameterRange(0f, 20f)]
+        [ParameterDefault(1f), ParameterRange(0f, 5f)]
         Multiplier
     }
     public enum Providers

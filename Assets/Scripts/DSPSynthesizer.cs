@@ -7,8 +7,9 @@ using System;
 using TMPro;
 using Unity.Properties;
 using UnityEditor.PackageManager;
+using UnityEditorInternal;
 
-public class DSPSynthesizer : MonoBehaviour
+public class DSPSynthesizer: MonoBehaviour
 {
     public GameObject ScopeRendererPrefab;
     public GameObject SpectrumRendererPrefab;
@@ -25,35 +26,7 @@ public class DSPSynthesizer : MonoBehaviour
     MyAudioDriver _Driver;
     AudioOutputHandle _OutputHandle;
 
-    // DSPNode _Oscilator1;
-    // DSPNode _Oscilator2;
-    // DSPNode _Oscilator3;
-    // DSPNode _Oscilator4;
-
-    // DSPNode _ADSR1;
-    // DSPNode _ADSR2;
-    // DSPNode _ADSR3;
-    // DSPNode _ADSR4;
-
-    // DSPNode _VCA1;
-    // DSPNode _VCA2;
-
-    // DSPNode _Mixer3;
-    // DSPNode _Mixer4;
-
-    // DSPNode _Midi;
-
-    // DSPNode _Attenuator;
-
-    // DSPNode _MonoToStereo;
-
-    // DSPNode _Scope;
-    // DSPNode _Spectrum;
-
-    // ScopeRenderer _ScopeRenderer;
-    // SpectrumRenderer _SpectrumRenderer;
-
-    private List<(DSPNode, NodeType, string)> paramter_cb = new List<(DSPNode, NodeType, string)>();
+    private List<(DSPNode, DSP_Node_Info, string, NodeType type)> parameter_cb = new List<(DSPNode, DSP_Node_Info, string, NodeType type)>();
     private List<DSPNode> port_cb = new List<DSPNode>();
 
     public enum NodeType
@@ -67,35 +40,8 @@ public class DSPSynthesizer : MonoBehaviour
         Scope,
         Spectrum,
         Midi
+            //@nick
     }
-
-    // (inputs/outpouts)
-    private (int, int) get_num_inputs(NodeType type) {
-        switch (type)
-        {
-            case NodeType.Oscillator:
-                return (3, 1);
-            case NodeType.ADSR:
-                return (1, 1);
-            case NodeType.VCA:
-                return (2, 1);
-            case NodeType.Mixer:
-                return (2, 1);
-            case NodeType.Attenuator:
-                return (1, 1);
-            case NodeType.M2S:
-                return (-1, -1); //dont know how this works
-            case NodeType.Scope:
-                return (-1, -1);
-            case NodeType.Midi:
-                return (0, 3);
-        }
-
-        Debug.Log("returned from get_num_inputs w/ type");
-        return (-1, 1);
-    
-    }
-
 
     private (int, int) ConnectSource; // (id, port)
     private bool dangling = false;
@@ -148,8 +94,6 @@ public class DSPSynthesizer : MonoBehaviour
 
             using (var block = _Graph.CreateCommandBlock())
             {
-                // block.Connect(_Midi, 2, _Oscilator1, 2); // midi retrigger to oscilator reset phase
-
                 var conn = block.Connect(port_cb[ConnectSource.Item1], ConnectSource.Item2, port_cb[ConnectDest.id], ConnectDest.port);
 
                 Debug.Log("Trying to connect");
@@ -159,8 +103,6 @@ public class DSPSynthesizer : MonoBehaviour
         {
             using (var block = _Graph.CreateCommandBlock())
             {
-                // block.Connect(_Midi, 2, _Oscilator1, 2); // midi retrigger to oscilator reset phase
-
                 var conn = block.Connect(port_cb[ConnectDest.id], ConnectDest.port, port_cb[ConnectSource.Item1], ConnectSource.Item2);
 
                 Debug.Log("Trying to connect");
@@ -174,9 +116,16 @@ public class DSPSynthesizer : MonoBehaviour
         ConnectSource = (-1, -1);
     }
 
+    public List<GameObject> lines = new List<GameObject>();
+
     public void Draw_Port_Line(Vector3 start, Vector3 stop)
     {
-        LineRenderer lineRenderer = gameObject.AddComponent<LineRenderer>();
+
+        var child = new GameObject();
+
+        LineRenderer lineRenderer = child.AddComponent<LineRenderer>();
+
+        lines.Add(child);
 
 
         lineRenderer.material = new Material(Shader.Find("Sprites/Default"));
@@ -221,49 +170,48 @@ public class DSPSynthesizer : MonoBehaviour
             return;
         }
 
+        Debug.Log("set to" + val);
+
+
+        DSPNode obj = parameter_cb[id].Item1;
+        var info = parameter_cb[id].Item2;
+        var type = parameter_cb[id].Item4;
+        //var block = _Graph.CreateCommandBlock();
+
+        float new_val = 0f;
+
+        foreach (var v in info.Params)
+        {
+            if (parameter_cb[id].Item3 == v.Item1)
+            {
+                var min = v.Item3.Item1;
+                var max = v.Item3.Item2;
+                new_val = (max - min) * val + min;
+                break;
+            }
+        }
+
 
         using (var block = _Graph.CreateCommandBlock())
         {
-            Debug.Log("set to" + val);
-
-
-            DSPNode obj = paramter_cb[id].Item1;
-            var type = paramter_cb[id].Item2;
-            //var block = _Graph.CreateCommandBlock();
-
-            ParameterRangeAttribute range = null;
-            float new_val = 0f;
-
             switch (type)
             {
                 case NodeType.Oscillator:
-                    Enum.TryParse(paramter_cb[id].Item3, out OscilatorNode.Parameters param1);
-
-                    range = GetRange(param1, type);
-                    new_val = (range.Max - range.Min) * val + range.Min;
-
+                    Enum.TryParse(parameter_cb[id].Item3, out OscilatorNode.Parameters param1);
                     block.SetFloat<OscilatorNode.Parameters, OscilatorNode.Providers, OscilatorNode>(obj, param1, new_val);
                     break;
 
                 case NodeType.ADSR:
-                    Enum.TryParse(paramter_cb[id].Item3, out ADSRNode.Parameters param2);
-                    //Debug.Log("ADSR" + val);
-
-                    range = GetRange(param2, type);
-                    new_val = (range.Max - range.Min) * val + range.Min;
-
+                    Enum.TryParse(parameter_cb[id].Item3, out ADSRNode.Parameters param2);
                     block.SetFloat<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>(obj, param2, new_val);
                     break;
 
                 case NodeType.VCA:
-
-
-                    Enum.TryParse(paramter_cb[id].Item3, out VCANode.Parameters param3);
-                    range = GetRange(param3, type);
-                    new_val = (range.Max - range.Min) * val + range.Min;
+                    Enum.TryParse(parameter_cb[id].Item3, out VCANode.Parameters param3);
                     block.SetFloat<VCANode.Parameters, VCANode.Providers, VCANode>(obj, param3, new_val);
-
                     break;
+
+                //@nick
             }
         }
     }
@@ -303,10 +251,12 @@ public class DSPSynthesizer : MonoBehaviour
             var vca = CreateVCA(block);
             var mixer = CreateMixer(block);
             var m2s = CreateMonoToStereo(block);
+            //@nick 
 
-            //block.Connect(midi, 0, adsr, 0);
+            block.Connect(midi, 0, adsr, 0);
             block.Connect(midi, 1, osc1, 1);
             block.Connect(midi, 2, osc1, 2);
+            //@nick ()
             block.Connect(adsr, 0, vca, 0);
             block.Connect(osc1, 0, vca, 1);
             block.Connect(vca, 0, mixer, 0);
@@ -451,140 +401,30 @@ public class DSPSynthesizer : MonoBehaviour
     //     //_SpectrumRenderer = SpawnSpectrumRenderer(_Spectrum);
     // }
 
-    ScopeRenderer SpawnScopeRenderer(DSPNode scopeNode)
-    {
-        GameObject go = Instantiate(ScopeRendererPrefab);
-        ScopeRenderer scope = go.GetComponent<ScopeRenderer>();
-        scope.Init(_Graph, scopeNode);
-        return scope;
-    }
-
-    SpectrumRenderer SpawnSpectrumRenderer(DSPNode spectrumNode)
-    {
-        GameObject go = Instantiate(SpectrumRendererPrefab);
-        SpectrumRenderer spectrum = go.GetComponent<SpectrumRenderer>();
-        spectrum.Init(_Graph, spectrumNode);
-        return spectrum;
-    }
-
-    public static ParameterRangeAttribute GetRange<TParameters>(TParameters parameter, NodeType type) where TParameters : unmanaged, Enum
-    {
-        FieldInfo fieldInfo = null;
-
-        switch (type)
-        {
-            case NodeType.Oscillator:
-                fieldInfo = typeof(OscilatorNode.Parameters).GetField(parameter.ToString());
-                break;
-
-            case NodeType.ADSR:
-                fieldInfo = typeof(ADSRNode.Parameters).GetField(parameter.ToString());
-                break;
-            case NodeType.Attenuator:
-                fieldInfo = typeof(AttenuatorNode.Parameters).GetField(parameter.ToString());
-                break;
-            case NodeType.Midi:
-                fieldInfo = typeof(MidiNode.Parameters).GetField(parameter.ToString());
-                break;
-            case NodeType.M2S:
-                fieldInfo = typeof(MonoToStereoNode.Parameters).GetField(parameter.ToString());
-                break;
-
-            case NodeType.Mixer:
-                fieldInfo = typeof(MixerNode.Parameters).GetField(parameter.ToString());
-                break;
-
-            case NodeType.VCA:
-                fieldInfo = typeof(VCANode.Parameters).GetField(parameter.ToString());
-                break;
-        }
 
 
 
 
-        if (fieldInfo != null)
-        {
-            // Versuche, das Attribut vom Typ ParameterRangeAttribute zu bekommen
-            var attribute = (ParameterRangeAttribute)Attribute.GetCustomAttribute(fieldInfo, typeof(ParameterRangeAttribute));
-            return attribute;
-        }
-
-        return null;
-    }
-
-    public static ParameterDefaultAttribute GetDefault<TParameters>(TParameters parameter, NodeType type) where TParameters : unmanaged, Enum
-    {
-
-        FieldInfo fieldInfo = null;
-
-        switch (type)
-        {
-            case NodeType.Oscillator:
-                fieldInfo = typeof(OscilatorNode.Parameters).GetField(parameter.ToString());
-                break;
-
-            case NodeType.ADSR:
-                fieldInfo = typeof(ADSRNode.Parameters).GetField(parameter.ToString());
-                break;
-            case NodeType.Attenuator:
-                fieldInfo = typeof(AttenuatorNode.Parameters).GetField(parameter.ToString());
-                break;
-            case NodeType.Midi:
-                fieldInfo = typeof(MidiNode.Parameters).GetField(parameter.ToString());
-                break;
-            case NodeType.M2S:
-                fieldInfo = typeof(MonoToStereoNode.Parameters).GetField(parameter.ToString());
-                break;
-
-            case NodeType.Mixer:
-                fieldInfo = typeof(MixerNode.Parameters).GetField(parameter.ToString());
-                break;
-
-            case NodeType.VCA:
-                fieldInfo = typeof(VCANode.Parameters).GetField(parameter.ToString());
-                break;
-        }
-
-        if (fieldInfo != null)
-        {
-            // Versuche, das Attribut vom Typ ParameterRangeAttribute zu bekommen
-            var attribute = (ParameterDefaultAttribute)Attribute.GetCustomAttribute(fieldInfo, typeof(ParameterDefaultAttribute));
-            return attribute;
-        }
-
-        return null;
-    }
-
-
-    private void CreateUIPanel<TParameters>(DSPNode Node, NodeType type) where TParameters : unmanaged, Enum
+    private void CreateUIPanel<TParameters>(DSPNode Node, DSP_Node_Info info, NodeType type) where TParameters : unmanaged, Enum
     {
         float[] offsets = { 0.5f, 1.5f, 2.5f, 3.5f };
 
-        var names = Enum.GetNames(typeof(TParameters));
-        var num_params = names.Length;
 
-        var num_ports = get_num_inputs(type);
+        var names = info.Params;
+        var num_params = names.Count;
+
+
+        var num_ports = (info.Num_Inputs, info.Num_Outputs);
 
         var pane_width = 3;
 
 
         var rows_params = (int)Math.Ceiling((float)num_params / pane_width);
-        var rows_inputs = (int)Math.Ceiling((float)num_ports.Item1 / pane_width);
-        var rows_outputs = (int)Math.Ceiling((float)num_ports.Item2 / pane_width);
+        var rows_inputs = (int)Math.Ceiling((float)num_ports.Num_Inputs / pane_width);
+        var rows_outputs = (int)Math.Ceiling((float)num_ports.Num_Outputs / pane_width);
 
         // #knobs + #inputs + #outputs
         var pane_height = rows_params + rows_inputs + rows_outputs;
-
-        //if (num_params == 0)
-        //{
-        //    pane_height = 1;
-        //    return;
-        //}
-
-        //if(current_highest_module == 0)
-        //{
-        //    current_highest_module += pane_height;
-        //}
 
         var pane_bottom = current_highest_module;
 
@@ -614,52 +454,16 @@ public class DSPSynthesizer : MonoBehaviour
             for (int col = 0; col < pane_width; col++)
             {
 
-                float def = 0f;
-                ParameterRangeAttribute range = null;
+                float def = names[param_count].Item2;
 
-                switch (type)
-                {
-                    case NodeType.Oscillator:
-                        Enum.TryParse(names[param_count], out OscilatorNode.Parameters param);
-                        def = GetDefault(param, type).DefaultValue;
-                        range = GetRange(param, type);
-                        break;
-                    case NodeType.ADSR:
-                        Enum.TryParse(names[param_count], out ADSRNode.Parameters param1);
-                        def = GetDefault(param1, type).DefaultValue;
-                        range = GetRange(param1, type);
-                        break;
-                    case NodeType.Midi:
-                        Enum.TryParse(names[param_count], out MidiNode.Parameters param2);
-                        def = GetDefault(param2, type).DefaultValue;
-                        range = GetRange(param2, type);
-                        break;
-                    case NodeType.Mixer:
-                        Enum.TryParse(names[param_count], out MixerNode.Parameters param3);
-                        def = GetDefault(param3, type).DefaultValue;
-                        range = GetRange(param3, type);
-                        break;
-                    case NodeType.Attenuator:
-                        Enum.TryParse(names[param_count], out AttenuatorNode.Parameters param4);
-                        def = GetDefault(param4, type).DefaultValue;
-                        range = GetRange(param4, type);
-                        break;
-                    case NodeType.M2S:
-                        Enum.TryParse(names[param_count], out MonoToStereoNode.Parameters param5);
-                        def = GetDefault(param5, type).DefaultValue;
-                        range = GetRange(param5, type);
-                        break;
-                    case NodeType.VCA:
-                        Enum.TryParse(names[param_count], out VCANode.Parameters param6);
-                        def = GetDefault(param6, type).DefaultValue;
-                        range = GetRange(param6, type);
-                        break;
-                }
+                float min = names[param_count].Item3.Item1;
+                float max= names[param_count].Item3.Item2;
+
 
                 Debug.Log("at type " + type);
                 Debug.Log("at param " + names[param_count]);
 
-                float percent = (def - range.Min) / (range.Max - range.Min); //[0;1], rotation has to be here between (whyever) -45 and 225
+                float percent = (def - min) / (max - min); //[0;1], rotation has to be here between (whyever) -45 and 225
                 float rot = percent * 270f - 45f;
 
 
@@ -669,7 +473,7 @@ public class DSPSynthesizer : MonoBehaviour
 
                 Transform knobPhysical = knob.GetComponentInChildren<Transform>();
 
-                paramter_cb.Add((Node, type, names[param_count]));
+                parameter_cb.Add((Node, info, names[param_count].Item1, type));
 
                 global_parameter_count++;
 
@@ -677,7 +481,7 @@ public class DSPSynthesizer : MonoBehaviour
                 var label = Instantiate(KnobLabelPrefab, new Vector3(offsets[col] - (float)pane_width / 2.0f, row + pane_bottom + 0.9f, -0.11f), Quaternion.Euler(new Vector3(0, 0, 0)));
                 var c_text = label.GetComponent<TMP_Text>();
                 c_text.horizontalAlignment = HorizontalAlignmentOptions.Center;
-                c_text.text = names[param_count] + (global_parameter_count - 1).ToString();
+                c_text.text = names[param_count].Item1 + (global_parameter_count - 1).ToString();
                 c_text.color = Color.black;
 
                 param_count++;
@@ -773,7 +577,9 @@ public class DSPSynthesizer : MonoBehaviour
         block.AddInletPort(oscilator, 16); // phase reset
         block.AddOutletPort(oscilator, 16);
 
-        CreateUIPanel<OscilatorNode.Parameters>(oscilator, NodeType.Oscillator);
+        var info = OscilatorNode.Get_Node_Info();
+
+        CreateUIPanel<OscilatorNode.Parameters>(oscilator,info, NodeType.Oscillator);
         return oscilator;
     }
 
@@ -782,10 +588,15 @@ public class DSPSynthesizer : MonoBehaviour
         var adsr = block.CreateDSPNode<ADSRNode.Parameters, ADSRNode.Providers, ADSRNode>();
         block.AddInletPort(adsr, 16); // gate
         block.AddOutletPort(adsr, 16);
-        CreateUIPanel<ADSRNode.Parameters>(adsr, NodeType.ADSR);
+
+        var info = ADSRNode.Get_Node_Info();
+
+        CreateUIPanel<ADSRNode.Parameters>(adsr,info, NodeType.ADSR);
 
         return adsr;
     }
+
+    //@nick CreateLP (...
 
     private DSPNode CreateVCA(DSPCommandBlock block)
     {
@@ -793,7 +604,11 @@ public class DSPSynthesizer : MonoBehaviour
         block.AddInletPort(vca, 16); // voltage
         block.AddInletPort(vca, 16); // input
         block.AddOutletPort(vca, 16);
-        CreateUIPanel<VCANode.Parameters>(vca, NodeType.VCA);
+
+        var info = VCANode.Get_Node_Info();
+
+
+        CreateUIPanel<VCANode.Parameters>(vca,info, NodeType.VCA);
 
         return vca;
     }
@@ -804,7 +619,10 @@ public class DSPSynthesizer : MonoBehaviour
         block.AddInletPort(mixer, 16); // input
         block.AddInletPort(mixer, 16); // cv
         block.AddOutletPort(mixer, 1);
-        CreateUIPanel<MixerNode.Parameters>(mixer, NodeType.Mixer);
+
+        var info = MixerNode.Get_Node_Info();
+
+        CreateUIPanel<MixerNode.Parameters>(mixer, info, NodeType.Mixer);
 
         return mixer;
     }
@@ -815,7 +633,10 @@ public class DSPSynthesizer : MonoBehaviour
         block.AddOutletPort(midi, 16); // gate
         block.AddOutletPort(midi, 16); // note
         block.AddOutletPort(midi, 16); // retrigger
-        CreateUIPanel<MidiNode.Parameters>(midi, NodeType.Midi);
+
+        var info = MidiNode.Get_Node_Info();
+
+        CreateUIPanel<MidiNode.Parameters>(midi,info, NodeType.Midi);
 
         return midi;
     }
@@ -825,7 +646,10 @@ public class DSPSynthesizer : MonoBehaviour
         var attenuator = block.CreateDSPNode<AttenuatorNode.Parameters, AttenuatorNode.Providers, AttenuatorNode>();
         block.AddInletPort(attenuator, 1);
         block.AddOutletPort(attenuator, 1);
-        CreateUIPanel<AttenuatorNode.Parameters>(attenuator, NodeType.Attenuator);
+
+        var info = AttenuatorNode.Get_Node_Info();
+
+        CreateUIPanel<AttenuatorNode.Parameters>(attenuator,info, NodeType.Attenuator);
 
 
         return attenuator;
@@ -837,26 +661,12 @@ public class DSPSynthesizer : MonoBehaviour
         block.AddInletPort(mts, 1); // left
         block.AddInletPort(mts, 1); // right
         block.AddOutletPort(mts, 2);
-        CreateUIPanel<MonoToStereoNode.Parameters>(mts, NodeType.M2S);
+
+        var info = MonoToStereoNode.Get_Node_Info();
+
+        CreateUIPanel<MonoToStereoNode.Parameters>(mts, info, NodeType.M2S);
 
 
         return mts;
     }
-
-    private DSPNode CreateMonoScope(DSPCommandBlock block)
-    {
-        var scope = block.CreateDSPNode<ScopeNode.Parameters, ScopeNode.Providers, ScopeNode>();
-        block.AddInletPort(scope, 1);
-        CreateUIPanel<ScopeNode.Parameters>(scope, NodeType.Scope);
-
-        return scope;
-    }
-
-    static DSPNode CreateSpectrum(DSPCommandBlock block)
-    {
-        var scope = block.CreateDSPNode<SpectrumNode.Parameters, SpectrumNode.Providers, SpectrumNode>();
-        block.AddInletPort(scope, 1);
-        return scope;
-    }
-
 }

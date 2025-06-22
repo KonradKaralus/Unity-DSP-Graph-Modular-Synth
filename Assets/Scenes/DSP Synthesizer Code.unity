@@ -194,7 +194,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 357364867}
-  - component: {fileID: 357364866}
+  - component: {fileID: 357364868}
   m_Layer: 0
   m_Name: DSP Synth
   m_TagString: Untagged
@@ -202,30 +202,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &357364866
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 357364865}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a55f173b1aa556c4eb29fc88c8592e57, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  ScopeRendererPrefab: {fileID: 2666575954849843332, guid: d50a9ba942611bf419b6b6f06a7cacff,
-    type: 3}
-  SpectrumRendererPrefab: {fileID: 7632666069866007437, guid: 70094f1d1be6e17468cbcc9cbf181598,
-    type: 3}
-  KnobPrefab: {fileID: 7851631875665360630, guid: da550b34105415a419040975f5cecf03,
-    type: 3}
-  PanePrefab: {fileID: 7069677085390750604, guid: a9fceef8eed240145884f5da75fa4b85,
-    type: 3}
-  KnobLabelPrefab: {fileID: 583736495553655816, guid: 7bbea93ed26090846a809ab5b445d3cd,
-    type: 3}
-  PortPrefab: {fileID: 2474737576877769637, guid: d97b8b6879fbc0b408bc6483b3930863,
-    type: 3}
 --- !u!4 &357364867
 Transform:
   m_ObjectHideFlags: 0
@@ -241,6 +217,28 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &357364868
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 357364865}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a55f173b1aa556c4eb29fc88c8592e57, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ScopeRendererPrefab: {fileID: 0}
+  SpectrumRendererPrefab: {fileID: 0}
+  KnobPrefab: {fileID: 7851631875665360630, guid: da550b34105415a419040975f5cecf03,
+    type: 3}
+  PanePrefab: {fileID: 7069677085390750604, guid: a9fceef8eed240145884f5da75fa4b85,
+    type: 3}
+  KnobLabelPrefab: {fileID: 583736495553655816, guid: 7bbea93ed26090846a809ab5b445d3cd,
+    type: 3}
+  PortPrefab: {fileID: 2474737576877769637, guid: d97b8b6879fbc0b408bc6483b3930863,
+    type: 3}
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0

@@ -3,13 +3,27 @@ using System.Collections;
 using Unity.Audio;
 using Unity.Mathematics;
 using Unity.Burst;
+using System.Collections.Generic;
+using System;
 
 [BurstCompile(CompileSynchronously = true)]
-public struct VCANode : IAudioKernel<VCANode.Parameters, VCANode.Providers>
+public struct VCANode : DSP_Node_Wrapper<VCANode.Parameters, VCANode.Providers>
 {
+
+    public static DSP_Node_Info Get_Node_Info()
+    {
+        return new DSP_Node_Info(
+            new List<(string, float, (float, float))> {
+                ("Multiplier", 1f, (0f, 3f)),
+            },
+            2,
+            1
+        );
+    }
+
     public enum Parameters
     {
-        [ParameterDefault(1.0f), ParameterRange(0f, 10f)]
+        [ParameterDefault(1.0f), ParameterRange(0f, 3f)]
         Multiplier,
     }
 

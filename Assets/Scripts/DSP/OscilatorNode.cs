@@ -5,13 +5,30 @@ using Unity.Mathematics;
 using Unity.Collections;
 using Unity.Burst;
 using Unity.Collections.LowLevel.Unsafe;
+using System.Collections.Generic;
+using System;
 
 [BurstCompile(CompileSynchronously = true)]
-public struct OscilatorNode : IAudioKernel<OscilatorNode.Parameters, OscilatorNode.Providers>
+public struct OscilatorNode : DSP_Node_Wrapper<OscilatorNode.Parameters, OscilatorNode.Providers>
 {
+    public static DSP_Node_Info Get_Node_Info()
+    {
+        return new DSP_Node_Info(
+            new List<(string, float, (float, float))> {
+            ("Frequency", 220f, (2f, 24000f)),
+            ("Mode", 0f, (0f, 4f)),
+            ("FMMultiplier", 0f, (0f, 1f)),
+            ("Unidirectional", 0f, (0f, 1f)),
+            },
+            3,
+            1
+        );
+    }
+
+
     public enum Parameters
     {
-        [ParameterDefault(261.63f), ParameterRange(2f, 24000f)]
+        [ParameterDefault(220f), ParameterRange(2f, 24000f)]
         Frequency,
         [ParameterDefault(0f), ParameterRange(0f, 4f)]
         Mode,
