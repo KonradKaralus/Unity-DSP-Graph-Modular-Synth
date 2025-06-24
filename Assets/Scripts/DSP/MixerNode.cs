@@ -18,8 +18,14 @@ public struct MixerNode : DSP_Node_Wrapper<MixerNode.Parameters, MixerNode.Provi
             new List<(string, float, (float, float))>
             {
             },
-            2,
-            1
+            new List<string> { 
+                "Input",
+                "Cv"
+            },
+            new List<string>
+            {
+                "Out"
+            }
         );
     }
 

@@ -18,8 +18,8 @@ public struct AttenuatorNode : DSP_Node_Wrapper<AttenuatorNode.Parameters, Atten
             new List<(string, float, (float, float))> {
                 ("Multiplier", 1f, (0f, 3f)),
             },
-            1,
-            1
+            new List<string> {"TEst" },
+            new List<string> { "Test"}
         );
     }
 

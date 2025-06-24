@@ -2,12 +2,8 @@
 using UnityEngine;
 using Unity.Audio;
 using System.Collections.Generic;
-using System.Reflection;
 using System;
 using TMPro;
-using Unity.Properties;
-using UnityEditor.PackageManager;
-using UnityEditorInternal;
 
 public class DSPSynthesizer: MonoBehaviour
 {
@@ -414,14 +410,14 @@ public class DSPSynthesizer: MonoBehaviour
         var num_params = names.Count;
 
 
-        var num_ports = (info.Num_Inputs, info.Num_Outputs);
+        var num_ports = (info.Inputs.Count, info.Outputs.Count);
 
         var pane_width = 3;
 
 
         var rows_params = (int)Math.Ceiling((float)num_params / pane_width);
-        var rows_inputs = (int)Math.Ceiling((float)num_ports.Num_Inputs / pane_width);
-        var rows_outputs = (int)Math.Ceiling((float)num_ports.Num_Outputs / pane_width);
+        var rows_inputs = (int)Math.Ceiling((float)num_ports.Item1 / pane_width);
+        var rows_outputs = (int)Math.Ceiling((float)num_ports.Item2 / pane_width);
 
         // #knobs + #inputs + #outputs
         var pane_height = rows_params + rows_inputs + rows_outputs;
@@ -522,7 +518,7 @@ public class DSPSynthesizer: MonoBehaviour
                 var label = Instantiate(KnobLabelPrefab, new Vector3(offsets[col] - (float)pane_width / 2.0f, row + pane_bottom + 0.9f, -0.11f), Quaternion.Euler(new Vector3(0, 0, 0)));
                 var c_text = label.GetComponent<TMP_Text>();
                 c_text.horizontalAlignment = HorizontalAlignmentOptions.Center;
-                c_text.text = "Input Port" + inputs_count.ToString();
+                c_text.text = "Input " + info.Inputs[inputs_count];
                 c_text.color = Color.black;
 
                 inputs_count++;
@@ -554,7 +550,7 @@ public class DSPSynthesizer: MonoBehaviour
                 var label = Instantiate(KnobLabelPrefab, new Vector3(offsets[col] - (float)pane_width / 2.0f, row + pane_bottom + 0.9f, -0.11f), Quaternion.Euler(new Vector3(0, 0, 0)));
                 var c_text = label.GetComponent<TMP_Text>();
                 c_text.horizontalAlignment = HorizontalAlignmentOptions.Center;
-                c_text.text = "Output Port" + outputs_count.ToString();
+                c_text.text = "Output " + info.Outputs[outputs_count];
                 c_text.color = Color.black;
 
                 outputs_count++;

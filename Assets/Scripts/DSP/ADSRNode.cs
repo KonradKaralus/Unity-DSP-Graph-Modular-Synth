@@ -21,8 +21,13 @@ public struct ADSRNode: DSP_Node_Wrapper<ADSRNode.Parameters, ADSRNode.Providers
             ("Sustain", 1f, (0f, 1f)),
             ("Release", 0f, (0f, 2f)),
             },
-            1,
-            1
+            new List<string> {
+                "Out"
+            },
+            new List<string>
+            {
+                "Gate"
+            }
         );
     }
 

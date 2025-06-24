@@ -20,8 +20,16 @@ public struct OscilatorNode : DSP_Node_Wrapper<OscilatorNode.Parameters, Oscilat
             ("FMMultiplier", 0f, (0f, 1f)),
             ("Unidirectional", 0f, (0f, 1f)),
             },
-            3,
-            1
+            new List<string> { 
+                "FM",
+                "Pitch",
+                "Phase Reset"
+            
+            },
+            new List<string>
+            {
+                "Out"
+            }
         );
     }
 

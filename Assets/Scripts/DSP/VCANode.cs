@@ -16,8 +16,14 @@ public struct VCANode : DSP_Node_Wrapper<VCANode.Parameters, VCANode.Providers>
             new List<(string, float, (float, float))> {
                 ("Multiplier", 1f, (0f, 3f)),
             },
-            2,
-            1
+            new List<string> {
+                "Voltage",
+                "Input"
+            },
+            new List<string>
+            {
+                "Out"
+            }
         );
     }
 

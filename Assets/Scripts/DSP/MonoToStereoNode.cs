@@ -17,8 +17,14 @@ public struct MonoToStereoNode : DSP_Node_Wrapper<MonoToStereoNode.Parameters, M
             {
 
             },
-            0,
-            0
+            new List<string> {
+                "Left",
+                "Right"
+            },
+            new List<string>
+            {
+                "Out"
+            }
         );
     }
 

@@ -17,8 +17,13 @@ public struct MidiNode : DSP_Node_Wrapper<MidiNode.Parameters, MidiNode.Provider
             new List<(string, float, (float, float))>
             {
             },  
-            0,
-            3
+            new List<string> { },
+            new List<string>
+            {
+                "Gate",
+                "Note",
+                "Retrigger"
+            }
         );
     }
 
