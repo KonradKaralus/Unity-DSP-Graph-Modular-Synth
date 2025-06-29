@@ -49,7 +49,8 @@ namespace Unity.Audio
         [NativeDisableUnsafePtrRestriction]
         private readonly IntPtr m_DisposeFunctionPointer;
 
-        private bool IsDriven { get; }
+        [field: MarshalAs(UnmanagedType.U1)]
+        private bool IsDriven { get; set; }
 
         [NativeDisableUnsafePtrRestriction]
         private readonly DSPGraph** m_UnsafeGraphBuffer;
