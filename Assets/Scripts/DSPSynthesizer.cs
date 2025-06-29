@@ -35,8 +35,8 @@ public class DSPSynthesizer: MonoBehaviour
         M2S,
         Scope,
         Spectrum,
-        Midi
-            //@nick
+        Midi,
+        LadderFilter
     }
 
     private (int, int) ConnectSource; // (id, port)
@@ -207,7 +207,10 @@ public class DSPSynthesizer: MonoBehaviour
                     block.SetFloat<VCANode.Parameters, VCANode.Providers, VCANode>(obj, param3, new_val);
                     break;
 
-                //@nick
+                case NodeType.LadderFilter:
+                    Enum.TryParse(parameter_cb[id].Item3, out LadderFilterNode.Parameters param4);
+                    block.SetFloat<LadderFilterNode.Parameters, LadderFilterNode.Providers, LadderFilterNode>(obj, param4, new_val);
+                    break;
             }
         }
     }
@@ -243,18 +246,22 @@ public class DSPSynthesizer: MonoBehaviour
         {
             var midi = CreateMidi(block);
             var osc1 = CreateOscilator(block);
+            var filter = CreateLP(block);
             var adsr = CreateADSR(block);
             var vca = CreateVCA(block);
             var mixer = CreateMixer(block);
             var m2s = CreateMonoToStereo(block);
-            //@nick 
 
             block.Connect(midi, 0, adsr, 0);
             block.Connect(midi, 1, osc1, 1);
             block.Connect(midi, 2, osc1, 2);
-            //@nick ()
+
             block.Connect(adsr, 0, vca, 0);
-            block.Connect(osc1, 0, vca, 1);
+
+            block.Connect(osc1, 0, filter, 0);
+            block.Connect(filter, 0, vca, 1);
+            //block.Connect(osc1, 0, vca, 1);
+
             block.Connect(vca, 0, mixer, 0);
             block.Connect(vca, 0, mixer, 1);
             block.Connect(mixer, 0, m2s, 0);
@@ -592,7 +599,18 @@ public class DSPSynthesizer: MonoBehaviour
         return adsr;
     }
 
-    //@nick CreateLP (...
+    private DSPNode CreateLP(DSPCommandBlock block)
+    {
+        var filter = block.CreateDSPNode<LadderFilterNode.Parameters, LadderFilterNode.Providers, LadderFilterNode>();
+        block.AddInletPort(filter, 16); // gate
+        block.AddOutletPort(filter, 16);
+
+        var info = LadderFilterNode.Get_Node_Info();
+
+        CreateUIPanel<LadderFilterNode.Parameters>(filter, info, NodeType.LadderFilter);
+
+        return filter;
+    }
 
     private DSPNode CreateVCA(DSPCommandBlock block)
     {
