@@ -36,7 +36,8 @@ public class DSPSynthesizer: MonoBehaviour
         Scope,
         Spectrum,
         Midi,
-        LadderFilter
+        LadderFilter,
+        TransferFunctionFilter
     }
 
     private (int, int) ConnectSource; // (id, port)
@@ -211,6 +212,11 @@ public class DSPSynthesizer: MonoBehaviour
                     Enum.TryParse(parameter_cb[id].Item3, out LadderFilterNode.Parameters param4);
                     block.SetFloat<LadderFilterNode.Parameters, LadderFilterNode.Providers, LadderFilterNode>(obj, param4, new_val);
                     break;
+
+                case NodeType.TransferFunctionFilter:
+                    Enum.TryParse(parameter_cb[id].Item3, out TransferFunctionFilterNode.Parameters param5);
+                    block.SetFloat<TransferFunctionFilterNode.Parameters, TransferFunctionFilterNode.Providers, TransferFunctionFilterNode>(obj, param5, new_val);
+                    break;
             }
         }
     }
@@ -244,26 +250,32 @@ public class DSPSynthesizer: MonoBehaviour
     {
         using (var block = _Graph.CreateCommandBlock())
         {
-            var midi = CreateMidi(block);
+            //var midi = CreateMidi(block);
             var osc1 = CreateOscilator(block);
-            var filter = CreateLP(block);
-            var adsr = CreateADSR(block);
-            var vca = CreateVCA(block);
+            //var filter = CreateLP(block);
+            //var adsr = CreateADSR(block);
+            //var vca = CreateVCA(block);
             var mixer = CreateMixer(block);
             var m2s = CreateMonoToStereo(block);
+            var tf_filter = CreateTransferFunctionFilter(block);
 
-            block.Connect(midi, 0, adsr, 0);
-            block.Connect(midi, 1, osc1, 1);
-            block.Connect(midi, 2, osc1, 2);
+            //block.Connect(midi, 0, adsr, 0);
+            //block.Connect(midi, 1, osc1, 1);
+            //block.Connect(midi, 2, osc1, 2);
 
-            block.Connect(adsr, 0, vca, 0);
+            //block.Connect(adsr, 0, vca, 0);
 
-            block.Connect(osc1, 0, filter, 0);
-            block.Connect(filter, 0, vca, 1);
-            //block.Connect(osc1, 0, vca, 1);
+            //block.Connect(osc1, 0, tf_filter, 0);
+            //block.Connect(tf_filter, 0, vca, 1);
 
-            block.Connect(vca, 0, mixer, 0);
-            block.Connect(vca, 0, mixer, 1);
+            //block.Connect(osc1, 0, mixer, 0);
+            //block.Connect(osc1, 0, mixer, 1);
+            block.Connect(osc1, 0, tf_filter, 0);
+            block.Connect(tf_filter, 0, mixer, 0);
+            block.Connect(tf_filter, 0, mixer, 1);
+
+            //block.Connect(vca, 0, mixer, 0);
+            //block.Connect(vca, 0, mixer, 1);
             block.Connect(mixer, 0, m2s, 0);
             block.Connect(mixer, 0, m2s, 1);
             block.Connect(m2s, 0, _Graph.RootDSP, 0);
@@ -611,6 +623,19 @@ public class DSPSynthesizer: MonoBehaviour
 
         return filter;
     }
+    
+    private DSPNode CreateTransferFunctionFilter(DSPCommandBlock block)
+    {
+        var filter = block.CreateDSPNode<TransferFunctionFilterNode.Parameters, TransferFunctionFilterNode.Providers, TransferFunctionFilterNode>();
+        block.AddInletPort(filter, 16); // gate
+        block.AddOutletPort(filter, 16);
+
+        var info = TransferFunctionFilterNode.Get_Node_Info();
+
+        CreateUIPanel<TransferFunctionFilterNode.Parameters>(filter, info, NodeType.TransferFunctionFilter);
+
+        return filter;
+    }
 
     private DSPNode CreateVCA(DSPCommandBlock block)
     {
@@ -622,7 +647,7 @@ public class DSPSynthesizer: MonoBehaviour
         var info = VCANode.Get_Node_Info();
 
 
-        CreateUIPanel<VCANode.Parameters>(vca,info, NodeType.VCA);
+        CreateUIPanel<VCANode.Parameters>(vca, info, NodeType.VCA);
 
         return vca;
     }
