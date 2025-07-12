@@ -10,7 +10,7 @@ namespace LevelUP.Dial
         public float right_bound = 45f;
 
         [SerializeField] Transform linkedDial;
-        [SerializeField] private int snapRotationAmount = 25;
+        [SerializeField] private int snapRotationAmount = 10;
         [SerializeField] private float angleTolerance;
         [SerializeField] private GameObject RighthandModel;
         [SerializeField] private GameObject LefthandModel;

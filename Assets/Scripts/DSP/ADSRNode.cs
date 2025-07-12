@@ -16,7 +16,7 @@ public struct ADSRNode: DSP_Node_Wrapper<ADSRNode.Parameters, ADSRNode.Providers
     {
         return new DSP_Node_Info(
             new List<(string, float, (float, float))> {
-            ("Attack", 0f, (0f, 2f)),
+            ("Attack", 0f, (0f, 1f)),
             ("Decay", 0f, (0f, 2f)),
             ("Sustain", 1f, (0f, 1f)),
             ("Release", 0f, (0f, 2f)),
@@ -33,7 +33,7 @@ public struct ADSRNode: DSP_Node_Wrapper<ADSRNode.Parameters, ADSRNode.Providers
 
     public enum Parameters
     {
-        [ParameterDefault(0f), ParameterRange(0f, 2f)]
+        [ParameterDefault(0f), ParameterRange(0f, 1f)]
         Attack,
         [ParameterDefault(0f), ParameterRange(0f, 2f)]
         Decay,

@@ -13,7 +13,7 @@ public struct TransferFunctionFilterNode : DSP_Node_Wrapper<TransferFunctionFilt
     {
         return new DSP_Node_Info(
             new List<(string, float, (float, float))> {
-                ("Cutoff", 100f, (20f, 2000f)),
+                ("Cutoff", 1900f, (20f, 2000f)),
                 ("Resonance", 0.1f, (0f, 1f)),
                 ("Type", 0f, (0f, 3f)), // 0: Butterworth, 1: Chebyshev, 2: Moog Ladder
             },

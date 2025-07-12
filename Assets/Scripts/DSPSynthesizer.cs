@@ -13,8 +13,10 @@ public class DSPSynthesizer: MonoBehaviour
     public GameObject PanePrefab;
     public GameObject KnobLabelPrefab;
     public GameObject PortPrefab;
+    public GameObject PlugPrefab;
 
     private float current_highest_module = 0.0f;
+
     private int global_parameter_count = 0;
     private int global_module_count = 0;
 
@@ -106,8 +108,6 @@ public class DSPSynthesizer: MonoBehaviour
             }
         }
 
-
-
             Draw_Port_Line(dangling_pos.Value, pos);
 
         ConnectSource = (-1, -1);
@@ -115,8 +115,26 @@ public class DSPSynthesizer: MonoBehaviour
 
     public List<GameObject> lines = new List<GameObject>();
 
+    private int color_idx = 0;
+
     public void Draw_Port_Line(Vector3 start, Vector3 stop)
     {
+
+        Color[] color_array = { Color.red, Color.white, Color.blue, Color.green, Color.magenta, Color.black, Color.cyan, Color.gray, Color.yellow };
+
+
+
+        var sta = Instantiate(PlugPrefab, start + new Vector3(0f, 0f, -0.76f), Quaternion.Euler(new Vector3(90,0,0)));
+        var sto = Instantiate(PlugPrefab, stop + new Vector3(0f,0f,-0.76f), Quaternion.Euler(new Vector3(90, 0, 0)));
+
+        sta.GetComponentInChildren<Renderer>().materials[1].color = color_array[color_idx];
+        sto.GetComponentInChildren<Renderer>().materials[1].color = color_array[color_idx];
+
+        color_idx++;
+
+
+        return;
+
 
         var child = new GameObject();
 
@@ -250,11 +268,11 @@ public class DSPSynthesizer: MonoBehaviour
     {
         using (var block = _Graph.CreateCommandBlock())
         {
-            //var midi = CreateMidi(block);
+            var midi = CreateMidi(block);
             var osc1 = CreateOscilator(block);
             //var filter = CreateLP(block);
-            //var adsr = CreateADSR(block);
-            //var vca = CreateVCA(block);
+            var adsr = CreateADSR(block);
+            var vca = CreateVCA(block);
             var mixer = CreateMixer(block);
             var m2s = CreateMonoToStereo(block);
             var tf_filter = CreateTransferFunctionFilter(block);
@@ -265,14 +283,15 @@ public class DSPSynthesizer: MonoBehaviour
 
             //block.Connect(adsr, 0, vca, 0);
 
-            //block.Connect(osc1, 0, tf_filter, 0);
-            //block.Connect(tf_filter, 0, vca, 1);
+            ////block.Connect(osc1, 0, tf_filter, 0);
+            ////block.Connect(tf_filter, 0, vca, 1);
 
-            //block.Connect(osc1, 0, mixer, 0);
-            //block.Connect(osc1, 0, mixer, 1);
-            block.Connect(osc1, 0, tf_filter, 0);
-            block.Connect(tf_filter, 0, mixer, 0);
-            block.Connect(tf_filter, 0, mixer, 1);
+            ////block.Connect(osc1, 0, mixer, 0);
+            ////block.Connect(osc1, 0, mixer, 1);
+            //block.Connect(osc1, 0, vca, 1);
+            //block.Connect(vca, 0, tf_filter, 0);
+            //block.Connect(tf_filter, 0, mixer, 0);
+            //block.Connect(tf_filter, 0, mixer, 1);
 
             //block.Connect(vca, 0, mixer, 0);
             //block.Connect(vca, 0, mixer, 1);
@@ -415,14 +434,18 @@ public class DSPSynthesizer: MonoBehaviour
 
     //     //_SpectrumRenderer = SpawnSpectrumRenderer(_Spectrum);
     // }
-
-
-
-
+    private float running_x = -3f;
 
     private void CreateUIPanel<TParameters>(DSPNode Node, DSP_Node_Info info, NodeType type) where TParameters : unmanaged, Enum
     {
-        float[] offsets = { 0.5f, 1.5f, 2.5f, 3.5f };
+        if(type == NodeType.M2S)
+        {
+            return;
+        }
+
+
+
+        float[] offsets = { 0.25f, 0.75f, 1.25f, 1.75f };
 
 
         var names = info.Params;
@@ -431,37 +454,50 @@ public class DSPSynthesizer: MonoBehaviour
 
         var num_ports = (info.Inputs.Count, info.Outputs.Count);
 
-        var pane_width = 3;
+        var pane_width = 4; // max items next to each other
+        var maximum_stack = 3; // max panels in y dir
 
 
         var rows_params = (int)Math.Ceiling((float)num_params / pane_width);
         var rows_inputs = (int)Math.Ceiling((float)num_ports.Item1 / pane_width);
         var rows_outputs = (int)Math.Ceiling((float)num_ports.Item2 / pane_width);
 
+        Debug.Log("at panel" + type.ToString());
+        Debug.Log("param_rows" + rows_params);
+        Debug.Log("inp_rows" + rows_inputs);
+        Debug.Log("out_rows" + rows_outputs);
+
+
         // #knobs + #inputs + #outputs
-        var pane_height = rows_params + rows_inputs + rows_outputs;
+        var pane_height = (rows_params + rows_inputs + rows_outputs)/2.0f + 0.1f;
 
         var pane_bottom = current_highest_module;
 
-        GameObject pane = Instantiate(PanePrefab, new Vector3(0, pane_bottom + (float)pane_height / 2.0f, 0), Quaternion.Euler(new Vector3(0, 0, 0)));
+        GameObject pane = Instantiate(PanePrefab, new Vector3(running_x, pane_bottom + (float)pane_height / 2.0f, 0), Quaternion.Euler(new Vector3(0, 0, 0)));
 
         var old_scale = pane.transform.localScale;
-        old_scale.x *= pane_width;
+        old_scale.x *= pane_width / 2.0f;
         old_scale.y *= pane_height;
 
         //Debug.Log("w:" + old_scale.x);
         //Debug.Log("h:" + old_scale.y);
 
-        current_highest_module += pane_height;
+        var mod_name = type.ToString();
+
+        var mod_label= Instantiate(KnobLabelPrefab, new Vector3(running_x, pane_height + pane_bottom - 0.1f, -0.11f), Quaternion.Euler(new Vector3(0, 0, 0)));
+        var l_text = mod_label.GetComponent<TMP_Text>();
+        l_text.horizontalAlignment = HorizontalAlignmentOptions.Center;
+        l_text.text = mod_name;
+        l_text.color = Color.black;
+        l_text.fontSize = 1.5f;
+
+
+
+
+        current_highest_module += pane_height + 0.2f;
 
         pane.transform.localScale = old_scale;
 
-        //if (num_params == 0)
-        //{
-        //    return;
-        //}
-
-        // params
         var param_count = 0;
 
         for (int row = 0; row < rows_params; row++)
@@ -475,14 +511,14 @@ public class DSPSynthesizer: MonoBehaviour
                 float max= names[param_count].Item3.Item2;
 
 
-                Debug.Log("at type " + type);
-                Debug.Log("at param " + names[param_count]);
+                //Debug.Log("at type " + type);
+                //Debug.Log("at param " + names[param_count]);
 
                 float percent = (def - min) / (max - min); //[0;1], rotation has to be here between (whyever) -45 and 225
                 float rot = percent * 270f - 45f;
 
 
-                GameObject knob = Instantiate(KnobPrefab, new Vector3(offsets[col] - (float)pane_width / 2.0f, row + pane_bottom + 0.5f, 0f), Quaternion.Euler(new Vector3(180, 0, rot)));
+                GameObject knob = Instantiate(KnobPrefab, new Vector3(offsets[col] - (float)pane_width / 4.0f + running_x, row / 2.0f + pane_bottom + 0.25f, 0f), Quaternion.Euler(new Vector3(180, 0, rot)));
                 knob.GetComponent<ParameterId>().Id = global_parameter_count;
                 knob.GetComponent<DialCB>().cb = On_Param_Change;
 
@@ -493,10 +529,10 @@ public class DSPSynthesizer: MonoBehaviour
                 global_parameter_count++;
 
                 // TODO make this maybe turn with the camera
-                var label = Instantiate(KnobLabelPrefab, new Vector3(offsets[col] - (float)pane_width / 2.0f, row + pane_bottom + 0.9f, -0.11f), Quaternion.Euler(new Vector3(0, 0, 0)));
+                var label = Instantiate(KnobLabelPrefab, new Vector3(offsets[col] - (float)pane_width / 4.0f + running_x, row / 2.0f + pane_bottom + 0.1f, -0.11f), Quaternion.Euler(new Vector3(0, 0, 0)));
                 var c_text = label.GetComponent<TMP_Text>();
                 c_text.horizontalAlignment = HorizontalAlignmentOptions.Center;
-                c_text.text = names[param_count].Item1 + (global_parameter_count - 1).ToString();
+                c_text.text = names[param_count].Item1;
                 c_text.color = Color.black;
 
                 param_count++;
@@ -518,15 +554,13 @@ public class DSPSynthesizer: MonoBehaviour
 
         port_cb.Add(Node);
 
-
-
         var inputs_count = 0;
 
         for (int row = rows_params; row < rows_inputs + rows_params; row++)
         {
             for (int col = 0; col < pane_width; col++)
             {
-                GameObject port = Instantiate(PortPrefab, new Vector3(offsets[col] - (float)pane_width / 2.0f, row + pane_bottom + 0.5f, -0.1f), Quaternion.Euler(new Vector3(90, 0, 0)));
+                GameObject port = Instantiate(PortPrefab, new Vector3(offsets[col] - (float)pane_width / 4.0f + running_x, row / 2.0f + pane_bottom + 0.25f, -0.1f), Quaternion.Euler(new Vector3(90, 0, 0)));
 
                 port.GetComponent<PortIds>().ModuleId = global_module_count;
                 port.GetComponent<PortIds>().PortId = inputs_count;
@@ -534,7 +568,7 @@ public class DSPSynthesizer: MonoBehaviour
 
                 port.GetComponent<PortCB>().cb = On_Connect;
 
-                var label = Instantiate(KnobLabelPrefab, new Vector3(offsets[col] - (float)pane_width / 2.0f, row + pane_bottom + 0.9f, -0.11f), Quaternion.Euler(new Vector3(0, 0, 0)));
+                var label = Instantiate(KnobLabelPrefab, new Vector3(offsets[col] - (float)pane_width / 4.0f + running_x, row / 2.0f + pane_bottom + 0.12f, -0.11f), Quaternion.Euler(new Vector3(0, 0, 0)));
                 var c_text = label.GetComponent<TMP_Text>();
                 c_text.horizontalAlignment = HorizontalAlignmentOptions.Center;
                 c_text.text = "Input " + info.Inputs[inputs_count];
@@ -558,7 +592,7 @@ public class DSPSynthesizer: MonoBehaviour
         {
             for (int col = 0; col < pane_width; col++)
             {
-                GameObject port = Instantiate(PortPrefab, new Vector3(offsets[col] - (float)pane_width / 2.0f, row + pane_bottom + 0.5f, -0.1f), Quaternion.Euler(new Vector3(90, 0, 0)));
+                GameObject port = Instantiate(PortPrefab, new Vector3(offsets[col] - (float)pane_width / 4.0f + running_x, row / 2.0f + pane_bottom + 0.25f, -0.1f), Quaternion.Euler(new Vector3(90, 0, 0)));
 
                 port.GetComponent<PortIds>().ModuleId = global_module_count;
                 port.GetComponent<PortIds>().PortId = outputs_count;
@@ -566,7 +600,7 @@ public class DSPSynthesizer: MonoBehaviour
 
                 port.GetComponent<PortCB>().cb = On_Connect;
 
-                var label = Instantiate(KnobLabelPrefab, new Vector3(offsets[col] - (float)pane_width / 2.0f, row + pane_bottom + 0.9f, -0.11f), Quaternion.Euler(new Vector3(0, 0, 0)));
+                var label = Instantiate(KnobLabelPrefab, new Vector3(offsets[col] - (float)pane_width / 4.0f + running_x, row / 2.0f + pane_bottom + 0.12f, -0.11f), Quaternion.Euler(new Vector3(0, 0, 0)));
                 var c_text = label.GetComponent<TMP_Text>();
                 c_text.horizontalAlignment = HorizontalAlignmentOptions.Center;
                 c_text.text = "Output " + info.Outputs[outputs_count];
@@ -582,6 +616,12 @@ public class DSPSynthesizer: MonoBehaviour
         }
 
         global_module_count += 1;
+
+        if(current_highest_module > maximum_stack)
+        {
+            current_highest_module = 0f;
+            running_x += pane_width / 2f + 0.2f; 
+        }
     }
 
     private DSPNode CreateOscilator(DSPCommandBlock block)
