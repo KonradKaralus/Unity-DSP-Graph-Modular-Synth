@@ -124,8 +124,8 @@ public class DSPSynthesizer: MonoBehaviour
 
 
 
-        var sta = Instantiate(PlugPrefab, start + new Vector3(0f, 0f, -0.76f), Quaternion.Euler(new Vector3(90,0,0)));
-        var sto = Instantiate(PlugPrefab, stop + new Vector3(0f,0f,-0.76f), Quaternion.Euler(new Vector3(90, 0, 0)));
+        var sta = Instantiate(PlugPrefab, start + new Vector3(0f, 0f, -0.62f), Quaternion.Euler(new Vector3(90,0,0)));
+        var sto = Instantiate(PlugPrefab, stop + new Vector3(0f,0f,-0.62f), Quaternion.Euler(new Vector3(90, 0, 0)));
 
         sta.GetComponentInChildren<Renderer>().materials[1].color = color_array[color_idx];
         sto.GetComponentInChildren<Renderer>().materials[1].color = color_array[color_idx];

@@ -65,7 +65,7 @@ public struct LadderFilterNode : DSP_Node_Wrapper<LadderFilterNode.Parameters, L
         this.dV = new NativeArray<float>(16, Allocator.AudioKernel, NativeArrayOptions.ClearMemory);
         this.tV = new NativeArray<float>(16, Allocator.AudioKernel, NativeArrayOptions.ClearMemory);
 
-        Debug.Log("init called" + this.V.Count());
+        //Debug.Log("init called" + this.V.Count());
     }
 
     public void Execute(ref ExecuteContext<Parameters, Providers> context)
@@ -120,8 +120,8 @@ public struct LadderFilterNode : DSP_Node_Wrapper<LadderFilterNode.Parameters, L
                 this.tV[3] = (float)Math.Tanh((double)this.V[3] / (2f * VT));
 
 
-                Debug.Log(this.V[3]);
-                Debug.Log("in" + inputBuffer[s]);
+                //Debug.Log(this.V[3]);
+                //Debug.Log("in" + inputBuffer[s]);
 
                 outputBuffer[s] = this.V[3];
                 //outputBuffer[s] = inputBuffer[s];

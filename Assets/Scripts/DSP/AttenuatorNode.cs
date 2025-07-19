@@ -1,12 +1,8 @@
-﻿using UnityEngine;
-using System.Collections;
-using Unity.Audio;
+﻿using Unity.Audio;
 using Unity.Mathematics;
-using Unity.CodeEditor;
 using Unity.Burst;
 using Unity.Collections;
 using System.Collections.Generic;
-using System;
 
 [BurstCompile(CompileSynchronously = true)]
 public struct AttenuatorNode : DSP_Node_Wrapper<AttenuatorNode.Parameters, AttenuatorNode.Providers>
